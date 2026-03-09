@@ -50,6 +50,8 @@ func (c *AuthController) Login() {
 		return
 	}
 	repo := &userModel.UserRepository{DB: db.DB}
+
+	// TODO: secret into env
 	authService := auth.NewAuthService(repo,"asdkhasdf")
     token, err := authService.Login(input.Email, input.Password)
     if err != nil {

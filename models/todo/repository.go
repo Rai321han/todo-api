@@ -2,13 +2,10 @@ package todo
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 )
 
-
-const (
-	ErrTodoNotFound string = "todo not found"
-)
+var ErrTodoNotFound = errors.New("todo not found")
 
 // TodoRepository provides methods to interact with the todos table in the database.
 // It contains a reference to the database connection and allows for creating, retrieving, updating, and deleting items.
@@ -62,7 +59,7 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 		&todo.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
-		return Todo{}, fmt.Errorf(ErrTodoNotFound)
+		return Todo{}, ErrTodoNotFound
 	} else if err != nil {
 		return Todo{}, err
 	}
@@ -132,7 +129,7 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 		)
 
 	if err == sql.ErrNoRows {
-		return Todo{}, fmt.Errorf(ErrTodoNotFound)
+		return Todo{}, ErrTodoNotFound
 	} else if err != nil {
 		return Todo{}, err
 	}
@@ -156,7 +153,7 @@ func (r *TodoRepository) Delete(id int, userId int) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf(ErrTodoNotFound)
+		return ErrTodoNotFound
 	}
 	return nil
 }

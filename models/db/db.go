@@ -11,7 +11,9 @@ import (
 
 var DB *sql.DB
 
-// InitDB initializes the database connection using environment variables for configuration. It sets up the connection pool and tests the connection to ensure it's working properly. If any errors occur during the initialization process, it will panic with an appropriate error message.
+// InitDB initializes the database connection using environment variables for configuration.
+// It sets up the connection pool and tests the connection to ensure it's working properly.
+// If any errors occur during the initialization process, it will panic with an appropriate error message.
 func InitDB() {
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
