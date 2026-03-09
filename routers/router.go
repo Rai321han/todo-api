@@ -2,9 +2,17 @@ package routers
 
 import (
 	"todo-api/controllers"
+
 	beego "github.com/beego/beego/v2/server/web"
 )
 
 func init() {
-    beego.Router("/", &controllers.MainController{})
+	ns := beego.NewNamespace("/v1/",
+		beego.NSNamespace("/api",
+			beego.NSRouter("/auth/register", &controllers.AuthController{}, "post:Register"),
+			beego.NSRouter("/auth/login", &controllers.AuthController{}, "post:Login"),
+		),
+	)
+
+	beego.AddNamespace(ns)
 }

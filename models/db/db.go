@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 var DB *sql.DB
@@ -18,13 +20,17 @@ func InitDB() {
 	dbname := os.Getenv("DB_NAME")
 
 
+
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		user, password, host, port, dbname,
 	)
 
+	fmt.Println(dsn)
+
 	// Initialize the database connection using the DSN
-	DB, err := sql.Open("postgres", dsn)
+	var err error
+	DB, err = sql.Open("postgres", dsn)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to the database: %v", err))
 	}
@@ -36,9 +42,9 @@ func InitDB() {
 
 	// Test the database connection
 	err = DB.Ping()
+
 	if err != nil {
 		panic(fmt.Sprintf("Failed to ping the database: %v", err))
 	}
-
 	fmt.Println("Database connection established successfully.")
 }
