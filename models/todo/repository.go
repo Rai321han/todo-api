@@ -5,13 +5,18 @@ import (
 	"fmt"
 )
 
+
+const (
+	ErrTodoNotFound string = "todo not found"
+)
+
 // TodoRepository provides methods to interact with the todos table in the database.
-// It contains a reference to the database connection and allows for creating, retrieving, updating, and deleting todo items.
+// It contains a reference to the database connection and allows for creating, retrieving, updating, and deleting items.
 type TodoRepository struct {
 	DB *sql.DB
 }
 
-// Create inserts a new todo item into the database. 
+// Create inserts a new item into the database. 
 // It takes a pointer to a todo struct as input and returns an error if the operation fails or the created Todo item with its ID populated if successful.
 func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	var createdTodo Todo
@@ -38,8 +43,8 @@ func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 }
 
 
-// GetByID retrieves a todo item from the database by its ID and user ID.
-// It returns the todo item if found and accessible by the user, or an error if the item is not found.
+// GetByID retrieves a item from the database by its ID and user ID.
+// It returns the item if found and accessible by the user, or an error if the item is not found.
 func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 	var todo Todo
 	query := `
@@ -57,7 +62,7 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 		&todo.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
-		return Todo{}, fmt.Errorf("todo not found")
+		return Todo{}, fmt.Errorf(ErrTodoNotFound)
 	} else if err != nil {
 		return Todo{}, err
 	}
@@ -65,8 +70,8 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 }
 
 
-// GetAll retrieves all todo items for a specific user from the database.
-// It returns a slice of todo items or an error if the operation fails.
+// GetAll retrieves all items for a specific user from the database.
+// It returns a slice of items or an error if the operation fails.
 func (r *TodoRepository) GetAll(userID int) ([]Todo, error) {
 	query := `
 		SELECT id, title, description, is_completed, user_id, created_at, updated_at
@@ -103,15 +108,15 @@ func (r *TodoRepository) GetAll(userID int) ([]Todo, error) {
 }
 
 
-// Update modifies an existing todo item in the database.
-// Update can update the title, description or is_completed fields of the todo item.
-// It takes a pointer to a todo struct as input and returns the updated Todo item or an error if the operation fails.
+// Update modifies an existing item in the database.
+// Update can update the title, description or is_completed fields of the item.
+// It takes a pointer to a struct as input and returns the updated item or an error if the operation fails.
 func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 	var updatedTodo Todo
 
 	query := `
-	UPDATE todos WHERE id = $1 AND user_id = $2
-	SET title = $3, description = $4, is_completed = $5, updated_at = NOW()
+	UPDATE todos SET title = $3, description = $4, is_completed = $5, updated_at = NOW()
+	WHERE id = $1 AND user_id = $2
 	RETURNING id, title, description, is_completed, user_id, created_at, updated_at
 	`	
 
@@ -127,7 +132,7 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 		)
 
 	if err == sql.ErrNoRows {
-		return Todo{}, fmt.Errorf("todo not found")
+		return Todo{}, fmt.Errorf(ErrTodoNotFound)
 	} else if err != nil {
 		return Todo{}, err
 	}
@@ -136,8 +141,8 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 }
 
 
-// Delete removes a todo item from the database based on its ID and user ID.
-// It returns an error if the operation fails or if the todo item is not found.
+// Delete removes a item from the database based on its ID and user ID.
+// It returns an error if the operation fails or if the item is not found.
 func (r *TodoRepository) Delete(id int, userId int) error {
 	query := `
 	DELETE FROM todos WHERE id = $1 AND user_id = $2
@@ -151,7 +156,7 @@ func (r *TodoRepository) Delete(id int, userId int) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return fmt.Errorf("todo not found")
+		return fmt.Errorf(ErrTodoNotFound)
 	}
 	return nil
 }
