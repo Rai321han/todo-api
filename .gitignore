@@ -1,0 +1,11 @@
+.env
+.exe
+conf/*
+.conf
+
+# Ignore Beego binary
+todo-api
+
+# Optional: ignore OS-specific binaries
+*.exe
+*.out
