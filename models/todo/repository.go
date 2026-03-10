@@ -29,9 +29,8 @@ func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	err := r.DB.QueryRow(query, todo.Title, todo.Description, todo.IsCompleted, todo.UserID).
 		Scan(&createdTodo.ID, &createdTodo.CreatedAt, &createdTodo.UpdatedAt)
 
-	fmt.Println("Printing todo...")
 	if err != nil {
-		return Todo{}, err
+		return Todo{}, fmt.Errorf("create todo: %w", err)
 	}
 
 	createdTodo.Title = todo.Title
@@ -63,9 +62,9 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 		&todo.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
-		return Todo{}, nil
+		return Todo{}, ErrTodoNotFound
 	} else if err != nil {
-		return Todo{}, errors.New("Failed to get todo.")
+		return Todo{}, fmt.Errorf("get todo by id: %w", err)
 	}
 	return todo, nil
 }
@@ -116,7 +115,7 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, er
 
 	rows, err := r.DB.Query(baseQuery, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list todos: %w", err)
 	}
 	defer rows.Close()
 
@@ -133,12 +132,12 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, er
 			&todo.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan todo row: %w", err)
 		}
 		todos = append(todos, todo)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterate todo rows: %w", err)
 	}
 	return todos, nil
 }
@@ -184,9 +183,9 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 		)
 
 	if err == sql.ErrNoRows {
-		return Todo{}, nil
+		return Todo{}, ErrTodoNotFound
 	} else if err != nil {
-		return Todo{}, err
+		return Todo{}, fmt.Errorf("update todo: %w", err)
 	}
 	return updatedTodo, nil
 }
@@ -201,11 +200,11 @@ func (r *TodoRepository) Delete(id int, userId int) error {
 	`
 	result, err := r.DB.Exec(query, id, userId)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete todo: %w", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("delete todo rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
 		return ErrTodoNotFound

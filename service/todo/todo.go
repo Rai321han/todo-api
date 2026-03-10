@@ -12,7 +12,18 @@ type TodoService struct {
 	repo *todoModel.TodoRepository
 }
 
-var ErrInvalidListOptions = errors.New("invalid todo list options")
+var (
+	ErrInvalidTodoInput  = errors.New("invalid todo input")
+	ErrInvalidTodoID     = errors.New("invalid todo id")
+	ErrInvalidUserID     = errors.New("invalid user id")
+	ErrInvalidListOptions = errors.New("invalid todo list options")
+	ErrTodoNotFound      = errors.New("todo not found")
+	ErrTodoCreateFailed  = errors.New("failed to create todo item")
+	ErrTodoFetchFailed   = errors.New("failed to retrieve todo item")
+	ErrTodoListFailed    = errors.New("failed to retrieve todo items")
+	ErrTodoUpdateFailed  = errors.New("failed to update todo item")
+	ErrTodoDeleteFailed  = errors.New("failed to delete todo item")
+)
 
 const (
 	defaultPage  = 1
@@ -38,17 +49,20 @@ func (s *TodoService) AddTodo(todoData *todoModel.Todo, userId int) (todoModel.T
 
 	createdTodo, err := s.repo.Create(todo)
 	if err != nil {
-		return todoModel.Todo{}, err
+		return todoModel.Todo{}, fmt.Errorf("%w: %v", ErrTodoCreateFailed, err)
 	}
 
-	// return the created todo item with its ID populated
 	return createdTodo, nil
 }
 
 func (s *TodoService) GetTodoByID(id, userID int) (todoModel.Todo, error) {
 	todo, err := s.repo.GetByID(id, userID)
 	if err != nil {
-		return todoModel.Todo{}, err
+		if errors.Is(err, todoModel.ErrTodoNotFound) {
+			return todoModel.Todo{}, ErrTodoNotFound
+		}
+
+		return todoModel.Todo{}, fmt.Errorf("%w: %v", ErrTodoFetchFailed, err)
 	}
 	return todo, nil
 }
@@ -61,7 +75,7 @@ func (s *TodoService) GetAllTodos(userID int, options todoModel.TodoListOptions)
 
 	todos, err := s.repo.GetAll(userID, normalizedOptions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrTodoListFailed, err)
 	}
 	return todos, nil
 }
@@ -73,7 +87,11 @@ func (s *TodoService) UpdateTodo(id, userID int, todo *todoModel.Todo) (todoMode
 
 	updatedTodo, err := s.repo.Update(id, userID, todo)
 	if err != nil {
-		return todoModel.Todo{}, err
+		if errors.Is(err, todoModel.ErrTodoNotFound) {
+			return todoModel.Todo{}, ErrTodoNotFound
+		}
+
+		return todoModel.Todo{}, fmt.Errorf("%w: %v", ErrTodoUpdateFailed, err)
 	}
 	return updatedTodo, nil
 }
@@ -81,23 +99,28 @@ func (s *TodoService) UpdateTodo(id, userID int, todo *todoModel.Todo) (todoMode
 func (s *TodoService) DeleteTodo(id, userID int) error {
 	err := s.repo.Delete(id, userID)
 	if err != nil {
-		return fmt.Errorf("failed to delete todo.")
+		if errors.Is(err, todoModel.ErrTodoNotFound) {
+			return ErrTodoNotFound
+		}
+
+		return fmt.Errorf("%w: %v", ErrTodoDeleteFailed, err)
 	}
 	return nil
 }
 
 func validateTodoInput(todo *todoModel.Todo) error {
 	if todo == nil {
-		return fmt.Errorf("Not enough data.")
+		return fmt.Errorf("%w: not enough data", ErrInvalidTodoInput)
 	}
 
 	todo.Title = strings.TrimSpace(todo.Title)
 	if todo.Title == "" {
-		return fmt.Errorf("title is required")
+		return fmt.Errorf("%w: title is required", ErrInvalidTodoInput)
 	}
 
 	return nil
 }
+
 
 func normalizeListOptions(options todoModel.TodoListOptions) (todoModel.TodoListOptions, error) {
 	if options.SortBy == "" {
@@ -117,6 +140,8 @@ func normalizeListOptions(options todoModel.TodoListOptions) (todoModel.TodoList
 		} else {
 			options.Order = "desc"
 		}
+	} else if order != "asc" && order != "desc" {
+		return todoModel.TodoListOptions{}, fmt.Errorf("invalid order. allowed values: asc, desc")
 	} else {
 		options.Order = order
 	}

@@ -18,7 +18,8 @@ func TestTodoService_AddTodo(t *testing.T) {
 		result, err := svc.AddTodo(nil, 7)
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Not enough data.")
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+		So(err.Error(), ShouldEqual, "invalid todo input: not enough data")
 		So(result.ID, ShouldEqual, 0)
 	})
 
@@ -55,7 +56,8 @@ func TestTodoService_AddTodo(t *testing.T) {
 
 		_, err := svc.AddTodo(&todoModel.Todo{Title: "Task"}, 3)
 
-		So(err, ShouldEqual, expectedErr)
+		So(errors.Is(err, ErrTodoCreateFailed), ShouldBeTrue)
+		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
 	})
 }
 
@@ -90,7 +92,22 @@ func TestTodoService_GetTodoByID(t *testing.T) {
 
 		_, err := svc.GetTodoByID(1, 1)
 
-		So(err, ShouldEqual, expectedErr)
+		So(errors.Is(err, ErrTodoFetchFailed), ShouldBeTrue)
+		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
+	})
+
+	Convey("GetTodoByID maps not found errors", t, func() {
+		repo := &todoModel.TodoRepository{}
+		svc := NewTodoService(repo)
+
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetByID", func(_ *todoModel.TodoRepository, _, _ int) (todoModel.Todo, error) {
+			return todoModel.Todo{}, todoModel.ErrTodoNotFound
+		})
+		defer patches.Reset()
+
+		_, err := svc.GetTodoByID(1, 1)
+
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
 	})
 }
 
@@ -156,7 +173,8 @@ func TestTodoService_GetAllTodos(t *testing.T) {
 
 		_, err := svc.GetAllTodos(10, todoModel.TodoListOptions{})
 
-		So(err, ShouldEqual, expectedErr)
+		So(errors.Is(err, ErrTodoListFailed), ShouldBeTrue)
+		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
 	})
 }
 
@@ -167,7 +185,8 @@ func TestTodoService_UpdateTodo(t *testing.T) {
 		_, err := svc.UpdateTodo(1, 1, &todoModel.Todo{Title: "   "})
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "title is required")
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+		So(err.Error(), ShouldEqual, "invalid todo input: title is required")
 	})
 
 	Convey("UpdateTodo calls repository with trimmed title", t, func() {
@@ -201,7 +220,22 @@ func TestTodoService_UpdateTodo(t *testing.T) {
 
 		_, err := svc.UpdateTodo(1, 2, &todoModel.Todo{Title: "Task"})
 
-		So(err, ShouldEqual, expectedErr)
+		So(errors.Is(err, ErrTodoUpdateFailed), ShouldBeTrue)
+		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
+	})
+
+	Convey("UpdateTodo maps not found errors", t, func() {
+		repo := &todoModel.TodoRepository{}
+		svc := NewTodoService(repo)
+
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Update", func(_ *todoModel.TodoRepository, _, _ int, _ *todoModel.Todo) (todoModel.Todo, error) {
+			return todoModel.Todo{}, todoModel.ErrTodoNotFound
+		})
+		defer patches.Reset()
+
+		_, err := svc.UpdateTodo(1, 2, &todoModel.Todo{Title: "Task"})
+
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
 	})
 }
 
@@ -234,7 +268,22 @@ func TestTodoService_DeleteTodo(t *testing.T) {
 		err := svc.DeleteTodo(12, 3)
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "failed to delete todo.")
+		So(errors.Is(err, ErrTodoDeleteFailed), ShouldBeTrue)
+		So(err.Error(), ShouldContainSubstring, "delete failed")
+	})
+
+	Convey("DeleteTodo maps not found errors", t, func() {
+		repo := &todoModel.TodoRepository{}
+		svc := NewTodoService(repo)
+
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Delete", func(_ *todoModel.TodoRepository, _, _ int) error {
+			return todoModel.ErrTodoNotFound
+		})
+		defer patches.Reset()
+
+		err := svc.DeleteTodo(12, 3)
+
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
 	})
 }
 
@@ -242,13 +291,15 @@ func TestValidateTodoInput(t *testing.T) {
 	Convey("validateTodoInput rejects nil", t, func() {
 		err := validateTodoInput(nil)
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "Not enough data.")
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+		So(err.Error(), ShouldEqual, "invalid todo input: not enough data")
 	})
 
 	Convey("validateTodoInput rejects empty title", t, func() {
 		err := validateTodoInput(&todoModel.Todo{Title: "  "})
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "title is required")
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+		So(err.Error(), ShouldEqual, "invalid todo input: title is required")
 	})
 
 	Convey("validateTodoInput trims valid title", t, func() {
