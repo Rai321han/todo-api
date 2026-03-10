@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"os"
 
 	"todo-api/models/db"
 	userModel "todo-api/models/user"
@@ -24,9 +25,9 @@ func (c *AuthController) Register() {
 	}
 
 	repo := &userModel.UserRepository{DB: db.DB}
-	
-	authService := auth.NewAuthService(repo,"asdkhasdf")
-	
+	secret := os.Getenv("JWT_SECRET")
+	authService := auth.NewAuthService(repo, secret)
+
 	err := authService.Register(&user)
 
 	if err != nil {
@@ -51,8 +52,8 @@ func (c *AuthController) Login() {
 	}
 	repo := &userModel.UserRepository{DB: db.DB}
 
-	// TODO: secret into env
-	authService := auth.NewAuthService(repo,"asdkhasdf")
+	secret := os.Getenv("JWT_SECRET")
+	authService := auth.NewAuthService(repo, secret)
     token, err := authService.Login(input.Email, input.Password)
     if err != nil {
         c.Ctx.Output.SetStatus(401)
