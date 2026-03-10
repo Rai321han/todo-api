@@ -6,12 +6,14 @@ import (
 
 type APIError struct {
 	Error    string `json:"error"`
+	StatusCode int `json:"code"`
 }
 
 func RespondWithError(ctx *context.Context, statusCode int, message string) {
 	ctx.Output.SetStatus(statusCode)
 	resp := APIError{
 		Error:    message,
+		StatusCode: statusCode,
 	}
 	ctx.Output.JSON(resp, false, false)
 }

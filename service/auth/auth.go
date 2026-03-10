@@ -14,8 +14,14 @@ import (
 // AuthService provides methods for user registration and authentication.
 // It interacts with the UserRepository to manage user data and uses JWT for token generation.
 type AuthService struct {
-	repo *user.UserRepository
+	repo UserRepo
 	JwtSecret string
+}
+
+// UserRepo defines repository behavior required by AuthService.
+type UserRepo interface {
+	GetUserByEmail(email string) (*user.User, error)
+	Create(user *user.User) error
 }
 
 // isValidEmail checks if the provided email address is in a valid format.
@@ -34,7 +40,7 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 // NewAuthService creates a new instance of AuthService with the provided UserRepository and JWT secret key.
-func NewAuthService(repo *user.UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(repo UserRepo, jwtSecret string) *AuthService {
 	return &AuthService{repo: repo, JwtSecret: jwtSecret}
 }
 
