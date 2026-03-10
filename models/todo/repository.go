@@ -3,6 +3,7 @@ package todo
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 var ErrTodoNotFound = errors.New("todo not found")
@@ -18,6 +19,7 @@ type TodoRepository struct {
 func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	var createdTodo Todo
 
+	
 	query := `
 		INSERT INTO todos (title, description, is_completed, user_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
@@ -27,6 +29,7 @@ func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	err := r.DB.QueryRow(query, todo.Title, todo.Description, todo.IsCompleted, todo.UserID).
 		Scan(&createdTodo.ID, &createdTodo.CreatedAt, &createdTodo.UpdatedAt)
 
+	fmt.Println("Printing todo...")
 	if err != nil {
 		return Todo{}, err
 	}
@@ -35,6 +38,7 @@ func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	createdTodo.Description = todo.Description
 	createdTodo.IsCompleted = todo.IsCompleted
 	createdTodo.UserID = todo.UserID
+
 
 	return createdTodo, nil
 }

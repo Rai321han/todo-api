@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"todo-api/models/db"
 	"todo-api/models/todo"
 	service "todo-api/service/todo"
@@ -22,7 +23,7 @@ func (c *TodoController) Create() {
 	var newTodo todo.Todo
 
 	// Decode json from the request body into the newTodo struct
-	if err := c.ParseForm(&newTodo); err != nil {
+	if err := json.NewDecoder(c.Ctx.Request.Body).Decode(&newTodo); err != nil {
 		c.Ctx.Output.SetStatus(400)
 		c.Ctx.Output.Body([]byte("invalid request body"))
 		return

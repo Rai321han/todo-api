@@ -26,7 +26,6 @@ func (s *TodoService) AddTodo(todo *todoModel.Todo) error {
 		return err
 	}
 
-	// Keep pointer-based API while returning persisted values to caller.
 	*todo = createdTodo
 	return nil
 }
