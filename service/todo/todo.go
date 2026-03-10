@@ -121,7 +121,6 @@ func validateTodoInput(todo *todoModel.Todo) error {
 	return nil
 }
 
-
 func normalizeListOptions(options todoModel.TodoListOptions) (todoModel.TodoListOptions, error) {
 	if options.SortBy == "" {
 		options.SortBy = "created_at"

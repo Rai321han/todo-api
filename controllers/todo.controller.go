@@ -20,6 +20,7 @@ type TodoController struct {
 	beego.Controller
 }
 
+// todoService returns a new instance of the TodoService with the necessary repository.
 func (c *TodoController) todoService() *service.TodoService {
 	todoRepo := &todo.TodoRepository{DB: db.DB}
 	return service.NewTodoService(todoRepo)
@@ -38,6 +39,12 @@ func (c *TodoController) parseTodoID() (int, error) {
 	return id, nil
 }
 
+
+// handleTodoError is a helper method to centralize error handling for todo-related operations.
+// It checks the type of error and responds with appropriate HTTP status codes and messages.
+// For known validation errors, it returns a 400 Bad Request status with the error message.
+// If the error indicates that a todo item was not found, it returns a 404 Not Found status.
+// For any other unexpected errors, it logs the error and returns a 500 Internal Server Error status with a generic message.
 func (c *TodoController) handleTodoError(action string, err error) {
 	switch {
 	case err == nil:
@@ -55,6 +62,10 @@ func (c *TodoController) handleTodoError(action string, err error) {
 	}
 }
 
+
+// decodeJSONBody is a helper function that decodes a JSON request body into the provided destination struct.
+// It uses a JSON decoder that disallows unknown fields to ensure that the request body only contains expected fields.
+// If the decoding fails due to invalid JSON or if there are extra fields in the request body, it returns an error with a descriptive message.
 func decodeJSONBody(body io.Reader, dst interface{}) error {
 	decoder := json.NewDecoder(body)
 	decoder.DisallowUnknownFields()
