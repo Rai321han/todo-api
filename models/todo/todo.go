@@ -10,3 +10,17 @@ type Todo struct {
 	CreatedAt   string `json:"created_at"`
 	UpdatedAt   string `json:"updated_at"`
 }
+
+// TodoListOptions contains query options for listing todos.
+type TodoListOptions struct {
+	Status *bool
+	SortBy string
+	Order  string
+	Search string
+	Page   int
+	Limit  int
+}
+
+func (o TodoListOptions) Offset() int {
+	return (o.Page - 1) * o.Limit
+}

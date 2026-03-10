@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -39,6 +40,8 @@ func AuthMiddleware(ctx *context.Context) {
 		return hmacSampleSecret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
+	fmt.Println(token.Valid)
+
 	if err != nil || !token.Valid {
 		ctx.Output.SetStatus(401)
 		ctx.Output.JSON(map[string]string{
@@ -46,5 +49,12 @@ func AuthMiddleware(ctx *context.Context) {
 		}, false, false)
 		ctx.Abort(401, "Unauthorized")
 		return
+	}
+
+	// Extract user info from token
+	// jwt.MapClaims is a map[string]interface{}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		ctx.Input.SetData("user_id", int(claims["user_id"].(float64)))
+		ctx.Input.SetData("username", claims["username"].(string))
 	}
 }

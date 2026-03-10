@@ -63,9 +63,9 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 		&todo.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
-		return Todo{}, ErrTodoNotFound
+		return Todo{}, nil
 	} else if err != nil {
-		return Todo{}, err
+		return Todo{}, errors.New("Failed to get todo.")
 	}
 	return todo, nil
 }
@@ -73,13 +73,48 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 
 // GetAll retrieves all items for a specific user from the database.
 // It returns a slice of items or an error if the operation fails.
-func (r *TodoRepository) GetAll(userID int) ([]Todo, error) {
-	query := `
+func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, error) {
+	baseQuery := `
 		SELECT id, title, description, is_completed, user_id, created_at, updated_at
 		FROM todos
 		WHERE user_id = $1
 	`
-	rows, err := r.DB.Query(query, userID)
+
+	args := []interface{}{userID}
+	argPos := 2
+
+	if options.Status != nil {
+		baseQuery += fmt.Sprintf(" AND is_completed = $%d", argPos)
+		args = append(args, *options.Status)
+		argPos++
+	}
+
+	if options.Search != "" {
+		baseQuery += fmt.Sprintf(" AND title ILIKE $%d", argPos)
+		args = append(args, "%"+options.Search+"%")
+		argPos++
+	}
+
+	orderBy := "created_at DESC"
+	if options.SortBy == "title" {
+		if options.Order == "desc" {
+			orderBy = "title DESC"
+		} else {
+			orderBy = "title ASC"
+		}
+	} else {
+		if options.Order == "asc" {
+			orderBy = "created_at ASC"
+		} else {
+			orderBy = "created_at DESC"
+		}
+	}
+
+	baseQuery += " ORDER BY " + orderBy
+	baseQuery += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
+	args = append(args, options.Limit, options.Offset())
+
+	rows, err := r.DB.Query(baseQuery, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +144,18 @@ func (r *TodoRepository) GetAll(userID int) ([]Todo, error) {
 }
 
 
+func nullString(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullBool(b bool) interface{} {
+	return b
+}
+
+
 // Update modifies an existing item in the database.
 // Update can update the title, description or is_completed fields of the item.
 // It takes a pointer to a struct as input and returns the updated item or an error if the operation fails.
@@ -116,12 +163,16 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 	var updatedTodo Todo
 
 	query := `
-	UPDATE todos SET title = $3, description = $4, is_completed = $5, updated_at = NOW()
+	UPDATE todos SET 
+	title = COALESCE($3, title), 
+	description = COALESCE($4, description), 
+	is_completed = COALESCE($5, is_completed), 
+	updated_at = NOW()
 	WHERE id = $1 AND user_id = $2
 	RETURNING id, title, description, is_completed, user_id, created_at, updated_at
-	`	
+	`
 
-	err := r.DB.QueryRow(query, id, userId, todo.Title, todo.Description, todo.IsCompleted).
+	err := r.DB.QueryRow(query, id, userId, nullString(todo.Title), nullString(todo.Description), nullBool(todo.IsCompleted)).
 		Scan(
 			&updatedTodo.ID,
 			&updatedTodo.Title,
@@ -133,13 +184,13 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 		)
 
 	if err == sql.ErrNoRows {
-		return Todo{}, ErrTodoNotFound
+		return Todo{}, nil
 	} else if err != nil {
 		return Todo{}, err
 	}
-	
 	return updatedTodo, nil
 }
+
 
 
 // Delete removes a item from the database based on its ID and user ID.

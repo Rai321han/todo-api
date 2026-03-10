@@ -17,9 +17,8 @@ func init() {
 	
 				beego.NSNamespace("/todos",
 					beego.NSBefore(middlewares.AuthMiddleware),
-					beego.NSRouter("/", &controllers.TodoController{}, "post:Create"),
+					beego.NSRouter("/", &controllers.TodoController{}, "get:GetAll;post:Create"),
 					beego.NSRouter("/:id", &controllers.TodoController{}, "get:GetByID;put:Update;delete:Delete"),
-					beego.NSRouter("/all", &controllers.TodoController{}, "get:GetAll"),
 				),
 		),
 		
