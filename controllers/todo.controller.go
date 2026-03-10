@@ -9,6 +9,7 @@ import (
 	"todo-api/models/db"
 	"todo-api/models/todo"
 	service "todo-api/service/todo"
+	"todo-api/utils"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
@@ -28,8 +29,7 @@ func (c *TodoController) Create() {
 
 	// Decode json from the request body into the newTodo struct
 	if err := json.NewDecoder(c.Ctx.Request.Body).Decode(&newTodo); err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte("invalid request body"))
+		utils.RespondWithError(c.Ctx, 400, "invalid request body")
 		return
 	}
 
@@ -37,8 +37,7 @@ func (c *TodoController) Create() {
 	userId := c.Ctx.Input.GetData("user_id").(int)
 	createdTodo, err := todoService.AddTodo(&newTodo, userId)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Ctx.Output.Body([]byte("failed to create todo item"))
+		utils.RespondWithError(c.Ctx, 500, "failed to create todo item")
 		return
 	}
 
@@ -62,20 +61,17 @@ func (c *TodoController) GetByID() {
 	// Extract the ID from the URL path
 	id, err := c.GetInt(":id")
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte("invalid ID"))
+		utils.RespondWithError(c.Ctx, 400, "invalid id.")
 		return
 	}
 
 	todo, err := todoService.GetTodoByID(id, userId)
 
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Ctx.Output.Body([]byte("failed to retrieve todo item"))
+		utils.RespondWithError(c.Ctx, 500, "failed to retrieve todo item")
 		return
 	} else if todo.ID == 0 {
-		c.Ctx.Output.SetStatus(404)
-		c.Ctx.Output.Body([]byte("todo item not found"))
+		utils.RespondWithError(c.Ctx, 404, "todo item not found")
 		return
 	}
 	c.Data["json"] = todo
@@ -94,21 +90,18 @@ func (c *TodoController) GetAll() {
 
 	options, err := parseTodoListOptions(c)
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte(err.Error()))
+		utils.RespondWithError(c.Ctx, 400, err.Error())
 		return
 	}
 
 	todos, err := todoService.GetAllTodos(userId, options)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidListOptions) {
-			c.Ctx.Output.SetStatus(400)
-			c.Ctx.Output.Body([]byte(err.Error()))
+			utils.RespondWithError(c.Ctx, 400, err.Error())
 			return
 		}
 
-		c.Ctx.Output.SetStatus(500)
-		c.Ctx.Output.Body([]byte("failed to retrieve todo items"))
+		utils.RespondWithError(c.Ctx, 500, "failed to retrieve todo items")
 		return
 	}
 
@@ -116,6 +109,10 @@ func (c *TodoController) GetAll() {
 	c.ServeJSON()
 }
 
+
+// parseTodoListOptions extracts and validates query parameters from the HTTP request to construct a TodoListOptions struct.
+// It handles parameters for filtering by status, sorting, pagination, and search.
+// If any parameters are invalid, it returns an error with a descriptive message.
 func parseTodoListOptions(c *TodoController) (todo.TodoListOptions, error) {
 	options := todo.TodoListOptions{
 		SortBy: c.GetString("sort_by"),
@@ -172,28 +169,24 @@ func (c *TodoController) Update() {
 	// Extract the ID from the URL path
 	id, err := c.GetInt(":id")
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte("invalid ID"))
+		utils.RespondWithError(c.Ctx, 400, "invalid id.")
 		return
 	}
 
 	var updatedData todo.Todo
 	if err := json.NewDecoder(c.Ctx.Request.Body).Decode(&updatedData); err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte("invalid request body"))
+		utils.RespondWithError(c.Ctx, 400, "invalid request body")
 		return
 	}
 	
 	updatedTodo, err := todoService.UpdateTodo(id, userId, &updatedData)
 
 	if err != nil {
-			c.Ctx.Output.SetStatus(404)
-			c.Ctx.Output.Body([]byte("failed to update todo."))
+		utils.RespondWithError(c.Ctx, 404, "failed to update todo.")
 	}
 
 	if updatedTodo.ID == 0 {
-		c.Ctx.Output.SetStatus(500)
-		c.Ctx.Output.Body([]byte("todo item not found"))
+		utils.RespondWithError(c.Ctx, 500, "todo item not found")
 		return
 	}
 	c.Data["json"] = updatedTodo
@@ -213,15 +206,13 @@ func (c *TodoController) Delete() {
 	// Extract the ID from the URL path
 	id, err := c.GetInt(":id")
 	if err != nil {
-		c.Ctx.Output.SetStatus(400)
-		c.Ctx.Output.Body([]byte("invalid ID"))
+		utils.RespondWithError(c.Ctx, 400, "invalid id.")
 		return
 	}
 
 	err = todoService.DeleteTodo(id, userId)
 	if err != nil {
-		c.Ctx.Output.SetStatus(500)
-		c.Ctx.Output.Body([]byte("failed to delete todo item"))
+		utils.RespondWithError(c.Ctx, 500, "failed to delete todo item")
 		return
 	}
 
