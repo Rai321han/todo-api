@@ -8,3 +8,5 @@ todo-api
 # Optional: ignore OS-specific binaries
 *.exe
 *.out
+
+docker-compose.yml
