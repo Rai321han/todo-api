@@ -11,7 +11,7 @@ import (
 	todoModel "todo-api/models/todo"
 )
 
-func TestTodoService_AddTodo(t *testing.T) {
+func TestTodoServiceAddTodo(t *testing.T) {
 	Convey("AddTodo validates input before calling repository", t, func() {
 		svc := NewTodoService(&todoModel.TodoRepository{})
 
@@ -61,7 +61,7 @@ func TestTodoService_AddTodo(t *testing.T) {
 	})
 }
 
-func TestTodoService_GetTodoByID(t *testing.T) {
+func TestTodoServiceGetTodoByID(t *testing.T) {
 	Convey("GetTodoByID returns todo from repository", t, func() {
 		repo := &todoModel.TodoRepository{}
 		svc := NewTodoService(repo)
@@ -111,7 +111,7 @@ func TestTodoService_GetTodoByID(t *testing.T) {
 	})
 }
 
-func TestTodoService_GetAllTodos(t *testing.T) {
+func TestTodoServiceGetAllTodos(t *testing.T) {
 	Convey("GetAllTodos normalizes default options and calls repository", t, func() {
 		repo := &todoModel.TodoRepository{}
 		svc := NewTodoService(repo)
@@ -178,7 +178,7 @@ func TestTodoService_GetAllTodos(t *testing.T) {
 	})
 }
 
-func TestTodoService_UpdateTodo(t *testing.T) {
+func TestTodoServiceUpdateTodo(t *testing.T) {
 	Convey("UpdateTodo validates input", t, func() {
 		svc := NewTodoService(&todoModel.TodoRepository{})
 
@@ -239,7 +239,7 @@ func TestTodoService_UpdateTodo(t *testing.T) {
 	})
 }
 
-func TestTodoService_DeleteTodo(t *testing.T) {
+func TestTodoServiceDeleteTodo(t *testing.T) {
 	Convey("DeleteTodo returns nil on success", t, func() {
 		repo := &todoModel.TodoRepository{}
 		svc := NewTodoService(repo)

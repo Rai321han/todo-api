@@ -30,10 +30,20 @@ func (f *fakeUserRepo) Create(user *userModel.User) error {
 	return nil
 }
 
+const (
+	fakeValidEmail    = "user@example.com"
+	fakeBadEmail = "bad-email"
+	fakeUsername = "testuser"
+
+	plainTextPassword = "plain-pass"
+	wrongPassword = "wrong-pass"
+	jwtSecret = "jwt_secret"
+)
+
 func TestIsValidEmail(t *testing.T) {
 	Convey("isValidEmail should validate format", t, func() {
-		So(isValidEmail("user@example.com"), ShouldBeTrue)
-		So(isValidEmail("bad-email"), ShouldBeFalse)
+		So(isValidEmail(fakeValidEmail), ShouldBeTrue)
+		So(isValidEmail(fakeBadEmail), ShouldBeFalse)
 	})
 }
 
@@ -50,24 +60,42 @@ func TestPasswordHelpers(t *testing.T) {
 
 func TestAuthServiceRegister(t *testing.T) {
 	Convey("Register should reject invalid email", t, func() {
-		svc := NewAuthService(&fakeUserRepo{}, "jwt-secret")
+		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
 
-		err := svc.Register(&userModel.User{Email: "bad-email", Password: "pass"})
+		err := svc.Register(&userModel.User{Email: fakeBadEmail, Password: plainTextPassword})
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidEmailFormat), ShouldBeTrue)
 	})
 
+	Convey("Register should reject missing username", t, func() {
+		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
+
+		err := svc.Register(&userModel.User{Email: fakeValidEmail, Password: plainTextPassword})
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrInvalidAuthInput), ShouldBeTrue)
+	})
+
+	Convey("Register should reject missing password", t, func() {
+		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
+
+		err := svc.Register(&userModel.User{Email: fakeValidEmail, Username: fakeUsername})
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrInvalidAuthInput), ShouldBeTrue)
+	})
+
 	Convey("Register should reject existing user", t, func() {
 		repo := &fakeUserRepo{
 			getUserByEmailFunc: func(email string) (*userModel.User, error) {
-				So(email, ShouldEqual, "existing@example.com")
+				So(email, ShouldEqual, fakeValidEmail)
 				return &userModel.User{ID: 1, Email: email}, nil
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		err := svc.Register(&userModel.User{Email: "existing@example.com", Password: "pass"})
+		err := svc.Register(&userModel.User{Username: fakeUsername, Email: fakeValidEmail, Password: plainTextPassword})
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrUserAlreadyExists), ShouldBeTrue)
@@ -79,19 +107,19 @@ func TestAuthServiceRegister(t *testing.T) {
 				return &userModel.User{}, userModel.ErrUserNotFound
 			},
 			createFunc: func(user *userModel.User) error {
-				So(user.Email, ShouldEqual, "new@example.com")
-				So(user.Password, ShouldNotEqual, "plain-pass")
-				So(CheckPasswordHash("plain-pass", user.Password), ShouldBeTrue)
+				So(user.Email, ShouldEqual, fakeValidEmail)
+				So(user.Password, ShouldNotEqual, plainTextPassword)
+				So(CheckPasswordHash(plainTextPassword, user.Password), ShouldBeTrue)
 				return nil
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		u := &userModel.User{Email: "new@example.com", Password: "plain-pass"}
+		u := &userModel.User{Username: fakeUsername, Email: fakeValidEmail, Password: plainTextPassword}
 		err := svc.Register(u)
 
 		So(err, ShouldBeNil)
-		So(CheckPasswordHash("plain-pass", u.Password), ShouldBeTrue)
+		So(CheckPasswordHash(plainTextPassword, u.Password), ShouldBeTrue)
 	})
 
 	Convey("Register should propagate create error", t, func() {
@@ -103,9 +131,9 @@ func TestAuthServiceRegister(t *testing.T) {
 				return errors.New("insert failed")
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		err := svc.Register(&userModel.User{Email: "new@example.com", Password: "pass"})
+		err := svc.Register(&userModel.User{Username: fakeUsername, Email: fakeValidEmail, Password: plainTextPassword})
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrAuthRegisterFailed), ShouldBeTrue)
@@ -114,7 +142,7 @@ func TestAuthServiceRegister(t *testing.T) {
 
 func TestAuthServiceGenerateToken(t *testing.T) {
 	Convey("GenerateToken should produce a valid signed JWT with expected claims", t, func() {
-		svc := NewAuthService(&fakeUserRepo{}, "my-secret")
+		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
 		u := &userModel.User{ID: 9, Username: "alice"}
 
 		tokenString, err := svc.GenerateToken(u)
@@ -124,7 +152,7 @@ func TestAuthServiceGenerateToken(t *testing.T) {
 
 		parsed, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			So(token.Method.Alg(), ShouldEqual, jwt.SigningMethodHS256.Alg())
-			return []byte("my-secret"), nil
+			return []byte(jwtSecret), nil
 		})
 
 		So(err, ShouldBeNil)
@@ -141,9 +169,9 @@ func TestAuthServiceGenerateToken(t *testing.T) {
 
 func TestAuthServiceLogin(t *testing.T) {
 	Convey("Login should reject invalid email", t, func() {
-		svc := NewAuthService(&fakeUserRepo{}, "jwt-secret")
+		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
 
-		token, err := svc.Login("bad-email", "pass")
+		token, err := svc.Login(fakeBadEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidEmailFormat), ShouldBeTrue)
@@ -156,16 +184,16 @@ func TestAuthServiceLogin(t *testing.T) {
 				return &userModel.User{}, errors.New("db error")
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login("user@example.com", "pass")
+		_, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrAuthLoginFailed), ShouldBeTrue)
 	})
 
 	Convey("Login should fail on wrong password", t, func() {
-		hash, hashErr := HashPassword("correct-pass")
+		hash, hashErr := HashPassword(plainTextPassword)
 		So(hashErr, ShouldBeNil)
 
 		repo := &fakeUserRepo{
@@ -173,9 +201,9 @@ func TestAuthServiceLogin(t *testing.T) {
 				return &userModel.User{ID: 2, Username: "bob", Email: email, Password: hash}, nil
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login("user@example.com", "wrong-pass")
+		_, err := svc.Login(fakeValidEmail, wrongPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
@@ -187,16 +215,16 @@ func TestAuthServiceLogin(t *testing.T) {
 				return &userModel.User{}, userModel.ErrUserNotFound
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login("missing@example.com", "any-pass")
+		_, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
 	})
 
 	Convey("Login should return token for valid credentials", t, func() {
-		hash, hashErr := HashPassword("correct-pass")
+		hash, hashErr := HashPassword(plainTextPassword)
 		So(hashErr, ShouldBeNil)
 
 		repo := &fakeUserRepo{
@@ -204,15 +232,15 @@ func TestAuthServiceLogin(t *testing.T) {
 				return &userModel.User{ID: 7, Username: "dave", Email: email, Password: hash}, nil
 			},
 		}
-		svc := NewAuthService(repo, "jwt-secret")
+		svc := NewAuthService(repo, jwtSecret)
 
-		token, err := svc.Login("user@example.com", "correct-pass")
+		token, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldBeNil)
 		So(token, ShouldNotBeBlank)
 
 		parsed, parseErr := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-			return []byte("jwt-secret"), nil
+			return []byte(jwtSecret), nil
 		})
 		So(parseErr, ShouldBeNil)
 		So(parsed.Valid, ShouldBeTrue)

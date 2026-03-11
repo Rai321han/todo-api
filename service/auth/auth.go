@@ -72,20 +72,25 @@ func (s *AuthService) Register(newUser *user.User) error {
 
 	newUser.Username = strings.TrimSpace(newUser.Username)
 	newUser.Email = normalizeEmail(newUser.Email)
-	if newUser.Username == "" {
-		return fmt.Errorf("%w: username is required", ErrInvalidAuthInput)
-	}
-	if newUser.Password == "" {
-		return fmt.Errorf("%w: password is required", ErrInvalidAuthInput)
-	}
+	
 	if !isValidEmail(newUser.Email) {
 		return ErrInvalidEmailFormat
 	}
+	
+	if newUser.Username == "" {
+		return fmt.Errorf("%w: username is required", ErrInvalidAuthInput)
+	}
+
+	if newUser.Password == "" {
+		return fmt.Errorf("%w: password is required", ErrInvalidAuthInput)
+	}
+	
 
 	_, err := s.repo.GetUserByEmail(newUser.Email)
 	if err == nil {
 		return ErrUserAlreadyExists
 	}
+	
 	if !errors.Is(err, user.ErrUserNotFound) {
 		return fmt.Errorf("%w: %v", ErrAuthRegisterFailed, err)
 	}
