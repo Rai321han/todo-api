@@ -2,7 +2,6 @@ package user
 
 import (
 	"database/sql"
-	"errors"
 )
 
 // UserRepository provides methods to interact with the users table in the database.
@@ -19,7 +18,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*User, error) {
         Scan(&user.ID, &user.Username, &user.Email, &user.Password)
     if err != nil {
         if err == sql.ErrNoRows {
-            return &User{}, errors.New("user not found")
+            return &User{}, ErrUserNotFound
         }
         return &User{}, err
     }

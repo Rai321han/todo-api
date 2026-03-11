@@ -77,7 +77,6 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListRe
 		FROM todos
 		WHERE user_id = $1
 	`
-
 	args := []interface{}{userID}
 	argPos := 2
 
@@ -162,9 +161,9 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListRe
 
 	totalPages := 0
 	if filteredCount > 0 {
+		// Calculate total pages based on the filtered count and limit.
 		totalPages = (filteredCount + options.Limit - 1) / options.Limit
 	}
-
 	return TodoListResponse{
 		TotalPages:  totalPages,
 		CurrentPage: options.Page,

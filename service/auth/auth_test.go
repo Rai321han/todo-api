@@ -20,7 +20,7 @@ func (f *fakeUserRepo) GetUserByEmail(email string) (*userModel.User, error) {
 	if f.getUserByEmailFunc != nil {
 		return f.getUserByEmailFunc(email)
 	}
-	return &userModel.User{}, errors.New("user not found")
+	return &userModel.User{}, userModel.ErrUserNotFound
 }
 
 func (f *fakeUserRepo) Create(user *userModel.User) error {
@@ -55,7 +55,7 @@ func TestAuthServiceRegister(t *testing.T) {
 		err := svc.Register(&userModel.User{Email: "bad-email", Password: "pass"})
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "invalid email format")
+		So(errors.Is(err, ErrInvalidEmailFormat), ShouldBeTrue)
 	})
 
 	Convey("Register should reject existing user", t, func() {
@@ -70,13 +70,13 @@ func TestAuthServiceRegister(t *testing.T) {
 		err := svc.Register(&userModel.User{Email: "existing@example.com", Password: "pass"})
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "user already exists")
+		So(errors.Is(err, ErrUserAlreadyExists), ShouldBeTrue)
 	})
 
 	Convey("Register should hash password and create user", t, func() {
 		repo := &fakeUserRepo{
 			getUserByEmailFunc: func(email string) (*userModel.User, error) {
-				return &userModel.User{}, errors.New("user not found")
+				return &userModel.User{}, userModel.ErrUserNotFound
 			},
 			createFunc: func(user *userModel.User) error {
 				So(user.Email, ShouldEqual, "new@example.com")
@@ -97,7 +97,7 @@ func TestAuthServiceRegister(t *testing.T) {
 	Convey("Register should propagate create error", t, func() {
 		repo := &fakeUserRepo{
 			getUserByEmailFunc: func(email string) (*userModel.User, error) {
-				return &userModel.User{}, errors.New("user not found")
+				return &userModel.User{}, userModel.ErrUserNotFound
 			},
 			createFunc: func(user *userModel.User) error {
 				return errors.New("insert failed")
@@ -108,7 +108,7 @@ func TestAuthServiceRegister(t *testing.T) {
 		err := svc.Register(&userModel.User{Email: "new@example.com", Password: "pass"})
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "insert failed")
+		So(errors.Is(err, ErrAuthRegisterFailed), ShouldBeTrue)
 	})
 }
 
@@ -146,7 +146,7 @@ func TestAuthServiceLogin(t *testing.T) {
 		token, err := svc.Login("bad-email", "pass")
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "invalid email format")
+		So(errors.Is(err, ErrInvalidEmailFormat), ShouldBeTrue)
 		So(token, ShouldEqual, "")
 	})
 
@@ -161,7 +161,7 @@ func TestAuthServiceLogin(t *testing.T) {
 		_, err := svc.Login("user@example.com", "pass")
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "db error")
+		So(errors.Is(err, ErrAuthLoginFailed), ShouldBeTrue)
 	})
 
 	Convey("Login should fail on wrong password", t, func() {
@@ -178,7 +178,21 @@ func TestAuthServiceLogin(t *testing.T) {
 		_, err := svc.Login("user@example.com", "wrong-pass")
 
 		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldEqual, "invalid credentials")
+		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
+	})
+
+	Convey("Login should return invalid credentials when user is missing", t, func() {
+		repo := &fakeUserRepo{
+			getUserByEmailFunc: func(email string) (*userModel.User, error) {
+				return &userModel.User{}, userModel.ErrUserNotFound
+			},
+		}
+		svc := NewAuthService(repo, "jwt-secret")
+
+		_, err := svc.Login("missing@example.com", "any-pass")
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
 	})
 
 	Convey("Login should return token for valid credentials", t, func() {
