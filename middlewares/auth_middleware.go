@@ -2,9 +2,9 @@ package middlewares
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
+	beego "github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -31,7 +31,9 @@ func AuthMiddleware(ctx *context.Context) {
 
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-	secret := os.Getenv("JWT_SECRET")
+	secret, _ := beego.AppConfig.String("secret::JWT_SECRET")
+	fmt.Println(secret)
+
 	hmacSampleSecret := []byte(secret)
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {

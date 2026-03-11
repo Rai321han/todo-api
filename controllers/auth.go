@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 
 	"todo-api/models/db"
 	userModel "todo-api/models/user"
@@ -23,7 +22,18 @@ type AuthController struct {
 
 func (c *AuthController) authService() *auth.AuthService {
 	repo := &userModel.UserRepository{DB: db.DB}
-	secret := os.Getenv("JWT_SECRET")
+	// get secret form app.conf
+	secret, err := beego.AppConfig.String("jwt::JWT_SECRET")
+	
+	if err != nil {
+		log.Fatal("Failed to read secret key from config")
+		panic(fmt.Sprintf("Failed to read secret key from config: %v", err))
+	}
+	if secret == "" {
+		log.Fatal("Secret key is not set in app.conf")
+		panic("Secret key is not set in app.conf")
+	}
+
 	return auth.NewAuthService(repo, secret)
 }
 

@@ -3,9 +3,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 
+	beego "github.com/beego/beego/v2/server/web"
 	_ "github.com/lib/pq"
 )
 
@@ -15,20 +15,16 @@ var DB *sql.DB
 // It sets up the connection pool and tests the connection to ensure it's working properly.
 // If any errors occur during the initialization process, it will panic with an appropriate error message.
 func InitDB() {
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-
-
+	host, _ := beego.AppConfig.String("database::DB_HOST")
+	port, _ := beego.AppConfig.String("database::DB_PORT")
+	user, _ := beego.AppConfig.String("database::DB_USER")
+	password, _ := beego.AppConfig.String("database::DB_PASSWORD")
+	dbname, _ := beego.AppConfig.String("database::DB_NAME")
 
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		user, password, host, port, dbname,
 	)
-
-	fmt.Println(dsn)
 
 	// Initialize the database connection using the DSN
 	var err error

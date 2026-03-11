@@ -113,6 +113,8 @@ func (c *TodoController) Create() {
 // If the item is found and accessible by the user, it returns the item with a 200 status code.
 // If the item is not found or there are any errors during retrieval, it responds with appropriate error messages and status codes.
 func (c *TodoController) GetByID() {
+	// panic here for test
+	panic("test panic")
 	todoService := c.todoService()
 	userId := c.currentUserID()
 	id, err := c.parseTodoID()

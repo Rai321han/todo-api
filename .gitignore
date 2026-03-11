@@ -1,7 +1,6 @@
 .env
 .exe
-conf/*
-.conf
+app.conf
 
 # Ignore Beego binary
 todo-api
