@@ -116,33 +116,33 @@ func TestTodoService_GetAllTodos(t *testing.T) {
 		repo := &todoModel.TodoRepository{}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, userID int, options todoModel.TodoListOptions) ([]todoModel.Todo, error) {
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
 			So(userID, ShouldEqual, 6)
 			So(options.SortBy, ShouldEqual, "created_at")
 			So(options.Order, ShouldEqual, "desc")
 			So(options.Page, ShouldEqual, defaultPage)
 			So(options.Limit, ShouldEqual, defaultLimit)
 			So(options.Search, ShouldEqual, "")
-			return []todoModel.Todo{{ID: 1, Title: "One"}}, nil
+			return todoModel.TodoListResponse{Todos: []todoModel.Todo{{ID: 1, Title: "One"}}}, nil
 		})
 		defer patches.Reset()
 
 		result, err := svc.GetAllTodos(6, todoModel.TodoListOptions{})
 
 		So(err, ShouldBeNil)
-		So(len(result), ShouldEqual, 1)
-		So(result[0].ID, ShouldEqual, 1)
+		So(len(result.Todos), ShouldEqual, 1)
+		So(result.Todos[0].ID, ShouldEqual, 1)
 	})
 
 	Convey("GetAllTodos applies title sorting defaults", t, func() {
 		repo := &todoModel.TodoRepository{}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, options todoModel.TodoListOptions) ([]todoModel.Todo, error) {
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
 			So(options.SortBy, ShouldEqual, "title")
 			So(options.Order, ShouldEqual, "asc")
 			So(options.Search, ShouldEqual, "hello")
-			return []todoModel.Todo{}, nil
+			return todoModel.TodoListResponse{}, nil
 		})
 		defer patches.Reset()
 
@@ -166,8 +166,8 @@ func TestTodoService_GetAllTodos(t *testing.T) {
 		svc := NewTodoService(repo)
 		expectedErr := errors.New("query failed")
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, _ todoModel.TodoListOptions) ([]todoModel.Todo, error) {
-			return nil, expectedErr
+		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, _ todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
+			return todoModel.TodoListResponse{}, expectedErr
 		})
 		defer patches.Reset()
 

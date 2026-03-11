@@ -72,9 +72,8 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 
 // GetAll retrieves all items for a specific user from the database.
 // It returns a slice of items or an error if the operation fails.
-func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, error) {
+func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListResponse, error) {
 	baseQuery := `
-		SELECT id, title, description, is_completed, user_id, created_at, updated_at
 		FROM todos
 		WHERE user_id = $1
 	`
@@ -94,6 +93,26 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, er
 		argPos++
 	}
 
+	countQuery := `
+		SELECT COUNT(*)
+		FROM todos
+		WHERE user_id = $1
+	`
+	var totalCount int
+	if err := r.DB.QueryRow(countQuery, userID).Scan(&totalCount); err != nil {
+		return TodoListResponse{}, fmt.Errorf("count todos: %w", err)
+	}
+
+	filteredCountQuery := "SELECT COUNT(*) " + baseQuery
+	var filteredCount int
+	if err := r.DB.QueryRow(filteredCountQuery, args...).Scan(&filteredCount); err != nil {
+		return TodoListResponse{}, fmt.Errorf("count filtered todos: %w", err)
+	}
+
+	// Determine the ORDER BY clause based on the SortBy and Order options.
+	// Default sorting is by created_at in descending order.
+	// If SortBy is "title", sort by title; otherwise, sort by created_at.
+	// The Order option determines whether the sorting is ascending or descending.
 	orderBy := "created_at DESC"
 	if options.SortBy == "title" {
 		if options.Order == "desc" {
@@ -109,13 +128,14 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, er
 		}
 	}
 
-	baseQuery += " ORDER BY " + orderBy
-	baseQuery += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
+	listQuery := `
+		SELECT id, title, description, is_completed, user_id, created_at, updated_at
+	` + baseQuery + " ORDER BY " + orderBy + fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
 	args = append(args, options.Limit, options.Offset())
 
-	rows, err := r.DB.Query(baseQuery, args...)
+	rows, err := r.DB.Query(listQuery, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list todos: %w", err)
+		return TodoListResponse{}, fmt.Errorf("list todos: %w", err)
 	}
 	defer rows.Close()
 
@@ -132,14 +152,26 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) ([]Todo, er
 			&todo.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan todo row: %w", err)
+			return TodoListResponse{}, fmt.Errorf("scan todo row: %w", err)
 		}
 		todos = append(todos, todo)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate todo rows: %w", err)
+		return TodoListResponse{}, fmt.Errorf("iterate todo rows: %w", err)
 	}
-	return todos, nil
+
+	totalPages := 0
+	if filteredCount > 0 {
+		totalPages = (filteredCount + options.Limit - 1) / options.Limit
+	}
+
+	return TodoListResponse{
+		TotalPages:  totalPages,
+		CurrentPage: options.Page,
+		Limit:       options.Limit,
+		TotalCount:  totalCount,
+		Todos:       todos,
+	}, nil
 }
 
 
