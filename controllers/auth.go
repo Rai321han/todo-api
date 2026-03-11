@@ -23,7 +23,7 @@ type AuthController struct {
 func (c *AuthController) authService() *auth.AuthService {
 	repo := &userModel.UserRepository{DB: db.DB}
 	// get secret form app.conf
-	secret, err := beego.AppConfig.String("jwt::JWT_SECRET")
+	secret, err := beego.AppConfig.String("secret::JWT_SECRET")
 	
 	if err != nil {
 		log.Fatal("Failed to read secret key from config")

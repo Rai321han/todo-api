@@ -118,7 +118,6 @@ func (s *TodoService) DeleteTodo(id, userID int) error {
 		if errors.Is(err, todoModel.ErrTodoNotFound) {
 			return ErrTodoNotFound
 		}
-
 		return fmt.Errorf("%w: %v", ErrTodoDeleteFailed, err)
 	}
 	return nil

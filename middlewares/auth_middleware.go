@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"strings"
 
 	beego "github.com/beego/beego/v2/server/web"
@@ -32,7 +31,6 @@ func AuthMiddleware(ctx *context.Context) {
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 	secret, _ := beego.AppConfig.String("secret::JWT_SECRET")
-	fmt.Println(secret)
 
 	hmacSampleSecret := []byte(secret)
 
@@ -42,7 +40,6 @@ func AuthMiddleware(ctx *context.Context) {
 		return hmacSampleSecret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
-	fmt.Println(token.Valid)
 
 	if err != nil || !token.Valid {
 		ctx.Output.SetStatus(401)

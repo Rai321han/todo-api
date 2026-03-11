@@ -9,8 +9,9 @@ import (
 )
 
 func main() {
-	beego.InsertFilter("*", beego.BeforeRouter, middlewares.RecoveryFilter)
-	db.InitDB()
-	beego.Run()
+    beego.BConfig.RecoverPanic = false
+    beego.InsertFilterChain("*", middlewares.RecoveryFilterChain)
+	beego.InsertFilterChain("*", middlewares.RequestLogger)
+    db.InitDB()
+    beego.Run()
 }
-
