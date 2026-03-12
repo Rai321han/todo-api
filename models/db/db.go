@@ -11,15 +11,27 @@ import (
 
 var DB *sql.DB
 
+var (
+	getConfigString = func(key string) (string, error) {
+		return beego.AppConfig.String(key)
+	}
+	openDB = func(driverName, dsn string) (*sql.DB, error) {
+		return sql.Open(driverName, dsn)
+	}
+	pingDB = func(db *sql.DB) error {
+		return db.Ping()
+	}
+)
+
 // InitDB initializes the database connection using environment variables for configuration.
 // It sets up the connection pool and tests the connection to ensure it's working properly.
 // If any errors occur during the initialization process, it will panic with an appropriate error message.
 func InitDB() {
-	host, _ := beego.AppConfig.String("database::DB_HOST")
-	port, _ := beego.AppConfig.String("database::DB_PORT")
-	user, _ := beego.AppConfig.String("database::DB_USER")
-	password, _ := beego.AppConfig.String("database::DB_PASSWORD")
-	dbname, _ := beego.AppConfig.String("database::DB_NAME")
+	host, _ := getConfigString("database::DB_HOST")
+	port, _ := getConfigString("database::DB_PORT")
+	user, _ := getConfigString("database::DB_USER")
+	password, _ := getConfigString("database::DB_PASSWORD")
+	dbname, _ := getConfigString("database::DB_NAME")
 
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
@@ -28,7 +40,7 @@ func InitDB() {
 
 	// Initialize the database connection using the DSN
 	var err error
-	DB, err = sql.Open("postgres", dsn)
+	DB, err = openDB("postgres", dsn)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to connect to the database: %v", err))
 	}
@@ -39,7 +51,7 @@ func InitDB() {
 	DB.SetConnMaxLifetime(5 * time.Minute)
 
 	// Test the database connection
-	err = DB.Ping()
+	err = pingDB(DB)
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed to ping the database: %v", err))
