@@ -109,7 +109,14 @@ cp conf/app.sample.conf conf/app.conf
 
 Then update `conf/app.conf` with your database and JWT secret values
 
-3. Build the app and run servers
+3. Update compose file
+```
+cp docker-compose-sample.yml docker-compose.yml
+```
+
+Then update the variables.
+
+4. Build the app and run servers
 
 ```bash
 docker compose up --build
@@ -118,7 +125,7 @@ docker compose up --build
 This also runs schema initialization from `init-db/init.sql`.
 
 
-If successful, the service will be available at:
+If successful, the api service will be available at:
 
 ```text
 http://localhost:<defined_port>
@@ -260,7 +267,7 @@ Most validation and business errors are returned as:
 
 Official Postman docs for this API:
 
-- https://documenter.getpostman.com/view/45965098/2sBXierZWC#4b99640c-b16c-43d9-ab03-62d9fe455d10
+- [API DOCUMENTATION](https://documenter.getpostman.com/view/45965098/2sBXierZWC#4b99640c-b16c-43d9-ab03-62d9fe455d10)
 
 ## Run Tests
 
