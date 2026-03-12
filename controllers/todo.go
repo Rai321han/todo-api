@@ -10,7 +10,7 @@ import (
 	"strings"
 	"todo-api/models/db"
 	"todo-api/models/todo"
-	service "todo-api/service/todo"
+	services "todo-api/services/todo"
 	"todo-api/utils"
 
 	beego "github.com/beego/beego/v2/server/web"
@@ -21,9 +21,9 @@ type TodoController struct {
 }
 
 // TodoService returns a new instance of the TodoService with the necessary repository.
-func TodoService() *service.TodoService {
+func TodoService() *services.TodoService {
 	todoRepo := &todo.TodoRepository{DB: db.DB}
-	return service.NewTodoService(todoRepo)
+	return services.NewTodoService(todoRepo)
 }
 
 func (c *TodoController) currentUserID() int {
@@ -49,12 +49,12 @@ func (c *TodoController) handleTodoError(action string, err error) {
 	switch {
 	case err == nil:
 		return
-	case errors.Is(err, service.ErrInvalidTodoInput),
-		errors.Is(err, service.ErrInvalidTodoID),
-		errors.Is(err, service.ErrInvalidUserID),
-		errors.Is(err, service.ErrInvalidListOptions):
+	case errors.Is(err, services.ErrInvalidTodoInput),
+		errors.Is(err, services.ErrInvalidTodoID),
+		errors.Is(err, services.ErrInvalidUserID),
+		errors.Is(err, services.ErrInvalidListOptions):
 		utils.RespondWithError(c.Ctx, 400, err.Error())
-	case errors.Is(err, service.ErrTodoNotFound):
+	case errors.Is(err, services.ErrTodoNotFound):
 		utils.RespondWithError(c.Ctx, 404, "todo item not found")
 	default:
 		log.Printf("todo %s failed: %v", action, err)

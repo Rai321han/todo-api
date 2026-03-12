@@ -9,7 +9,7 @@ import (
 
 	"todo-api/models/db"
 	userModel "todo-api/models/user"
-	"todo-api/service/auth"
+	"todo-api/services/auth"
 	"todo-api/utils"
 
 	beego "github.com/beego/beego/v2/server/web"
