@@ -252,7 +252,95 @@ Response shape (`200`):
 }
 ```
 
-5. Error format
+5. Get todo by id
+
+```bash
+curl -X GET http://localhost:8080/v1/api/todos/1 \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Success response (`200`):
+
+```json
+{
+  "id": 1,
+  "title": "Finish internship task",
+  "user_id": 1,
+  "description": "Write README and verify endpoints",
+  "is_completed": false,
+  "created_at": "2026-03-11T10:00:00Z",
+  "updated_at": "2026-03-11T10:00:00Z"
+}
+```
+
+6. Update todo by id
+
+```bash
+curl -X PUT http://localhost:8080/v1/api/todos/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <jwt-token>" \
+  -d '{
+    "title": "Finish internship task (updated)",
+    "description": "Update endpoint example in README",
+    "is_completed": true
+  }'
+```
+
+Success response (`200`):
+
+```json
+{
+  "id": 1,
+  "title": "Finish internship task (updated)",
+  "user_id": 1,
+  "description": "Update endpoint example in README",
+  "is_completed": true,
+  "created_at": "2026-03-11T10:00:00Z",
+  "updated_at": "2026-03-12T09:30:00Z"
+}
+```
+
+7. Delete todo by id
+
+```bash
+curl -X DELETE http://localhost:8080/v1/api/todos/1 \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Success response (`204`):
+
+No response body.
+
+8. Get all todos (simple)
+
+```bash
+curl -X GET http://localhost:8080/v1/api/todos/ \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Response shape (`200`):
+
+```json
+{
+  "total_pages": 1,
+  "current_page": 1,
+  "limit": 10,
+  "total_count": 1,
+  "todos": [
+    {
+      "id": 1,
+      "title": "Finish internship task",
+      "user_id": 1,
+      "description": "Write README and verify endpoints",
+      "is_completed": false,
+      "created_at": "2026-03-11T10:00:00Z",
+      "updated_at": "2026-03-11T10:00:00Z"
+    }
+  ]
+}
+```
+
+9. Error format
 
 Most validation and business errors are returned as:
 
