@@ -20,8 +20,8 @@ type TodoController struct {
 	beego.Controller
 }
 
-// todoService returns a new instance of the TodoService with the necessary repository.
-func (c *TodoController) todoService() *service.TodoService {
+// TodoService returns a new instance of the TodoService with the necessary repository.
+func TodoService() *service.TodoService {
 	todoRepo := &todo.TodoRepository{DB: db.DB}
 	return service.NewTodoService(todoRepo)
 }
@@ -87,7 +87,7 @@ func decodeJSONBody(body io.Reader, dst interface{}) error {
 // If successful, it returns the created task item with a 201 status code.
 // If there are any errors during parsing, validation, or creation, it responds with appropriate error messages and status codes.
 func (c *TodoController) Create() {
-	todoService := c.todoService()
+	todoService := TodoService()
 	var newTodo todo.Todo
 
 	if err := decodeJSONBody(c.Ctx.Request.Body, &newTodo); err != nil {
@@ -113,7 +113,7 @@ func (c *TodoController) Create() {
 // If the item is found and accessible by the user, it returns the item with a 200 status code.
 // If the item is not found or there are any errors during retrieval, it responds with appropriate error messages and status codes.
 func (c *TodoController) GetByID() {
-	todoService := c.todoService()
+	todoService := TodoService()
 	userId := c.currentUserID()
 	id, err := c.parseTodoID()
 
@@ -137,7 +137,7 @@ func (c *TodoController) GetByID() {
 // If successful, it returns a list of task items with a 200 status code.
 // If there are any errors during retrieval or if no items are found, it responds with appropriate error messages and status codes.
 func (c *TodoController) GetAll() {
-	todoService := c.todoService()
+	todoService := TodoService()
 	userId := c.currentUserID()
 
 	options, err := parseTodoListOptions(c)
@@ -208,7 +208,7 @@ func parseTodoListOptions(c *TodoController) (todo.TodoListOptions, error) {
 // If the update is successful, it returns the updated task item with a 200 status code.
 // If there are any errors during parsing, validation, or updating, it responds with appropriate error messages and status codes.
 func (c *TodoController) Update() {
-	todoService := c.todoService()
+	todoService := TodoService()
 	userId := c.currentUserID()
 	id, err := c.parseTodoID()
 	if err != nil {
@@ -238,7 +238,7 @@ func (c *TodoController) Update() {
 // If the deletion is successful, it returns a 204 No Content status code.
 // If there are any errors during deletion or if the item is not found, it responds with appropriate error messages and status codes.
 func (c *TodoController) Delete() {
-	todoService := c.todoService()
+	todoService := TodoService()
 	userId := c.currentUserID()
 	id, err := c.parseTodoID()
 
