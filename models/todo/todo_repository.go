@@ -19,7 +19,6 @@ type TodoRepository struct {
 func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	var createdTodo Todo
 
-	
 	query := `
 		INSERT INTO todos (title, description, is_completed, user_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NOW(), NOW())

@@ -87,7 +87,7 @@ API prefix:
 
 Install the following:
 
-- Go (recommended: `1.25+` to match `go.mod`)
+- Go (recommended: `1.25+`)
 - Docker and Docker Compose
 - Git
 - `curl` (optional, for testing)
