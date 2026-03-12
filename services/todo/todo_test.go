@@ -9,6 +9,8 @@ import (
 	todoModel "todo-api/models/todo"
 )
 
+// fakeTodoRepo is a test double for the TodoRepository interface that allows us to inject custom behavior for each method.
+// We can set the function fields to simulate different scenarios and control the responses for our service tests.
 type fakeTodoRepo struct {
 	createFunc  func(todo *todoModel.Todo) (todoModel.Todo, error)
 	getByIDFunc func(id, userID int) (todoModel.Todo, error)
@@ -16,6 +18,7 @@ type fakeTodoRepo struct {
 	updateFunc  func(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error)
 	deleteFunc  func(id, userID int) error
 }
+
 
 func (f *fakeTodoRepo) Create(todo *todoModel.Todo) (todoModel.Todo, error) {
 	if f.createFunc != nil {
