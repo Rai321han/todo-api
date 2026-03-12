@@ -15,7 +15,7 @@ type TodoRepository struct {
 }
 
 // Create inserts a new item into the database. 
-// It takes a pointer to a todo struct as input and returns an error if the operation fails or the created Todo item with its ID populated if successful.
+// It takes a pointer to a task struct as input and returns an error if the operation fails or the created task item with its ID populated if successful.
 func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	var createdTodo Todo
 

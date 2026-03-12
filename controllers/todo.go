@@ -40,10 +40,10 @@ func (c *TodoController) parseTodoID() (int, error) {
 }
 
 
-// handleTodoError is a helper method to centralize error handling for todo-related operations.
+// handleTodoError is a helper method to centralize error handling for task-related operations.
 // It checks the type of error and responds with appropriate HTTP status codes and messages.
 // For known validation errors, it returns a 400 Bad Request status with the error message.
-// If the error indicates that a todo item was not found, it returns a 404 Not Found status.
+// If the error indicates that a task item was not found, it returns a 404 Not Found status.
 // For any other unexpected errors, it logs the error and returns a 500 Internal Server Error status with a generic message.
 func (c *TodoController) handleTodoError(action string, err error) {
 	switch {
@@ -82,9 +82,9 @@ func decodeJSONBody(body io.Reader, dst interface{}) error {
 	return nil
 }
 
-// Create handles the HTTP POST request to create a new todo item. 
-// It parses the request body to extract the todo details, validates the input, and then calls the service layer to add the new todo item to the database.
-// If successful, it returns the created todo item with a 201 status code.
+// Create handles the HTTP POST request to create a new task item. 
+// It parses the request body to extract the task details, validates the input, and then calls the service layer to add the new task item to the database.
+// If successful, it returns the created task item with a 201 status code.
 // If there are any errors during parsing, validation, or creation, it responds with appropriate error messages and status codes.
 func (c *TodoController) Create() {
 	todoService := c.todoService()
@@ -108,8 +108,8 @@ func (c *TodoController) Create() {
 }
 
 
-// GetByID handles the HTTP GET request to retrieve a specific todo item by its ID.
-// It extracts the ID from the URL path, validates it, and then calls the service layer to fetch the corresponding todo item from the database.
+// GetByID handles the HTTP GET request to retrieve a specific task item by its ID.
+// It extracts the ID from the URL path, validates it, and then calls the service layer to fetch the corresponding task item from the database.
 // If the item is found and accessible by the user, it returns the item with a 200 status code.
 // If the item is not found or there are any errors during retrieval, it responds with appropriate error messages and status codes.
 func (c *TodoController) GetByID() {
@@ -133,8 +133,8 @@ func (c *TodoController) GetByID() {
 }
 
 
-// GetAll handles the HTTP GET request to retrieve all todo items for the authenticated user.
-// If successful, it returns a list of todo items with a 200 status code.
+// GetAll handles the HTTP GET request to retrieve all task items for the authenticated user.
+// If successful, it returns a list of task items with a 200 status code.
 // If there are any errors during retrieval or if no items are found, it responds with appropriate error messages and status codes.
 func (c *TodoController) GetAll() {
 	todoService := c.todoService()
@@ -203,9 +203,9 @@ func parseTodoListOptions(c *TodoController) (todo.TodoListOptions, error) {
 }
 
 
-// Update handles the HTTP PUT request to update a specific todo item by its ID.
-// It extracts the ID from the URL path, validates it, and then parses the request body to get the updated details of the todo item.
-// If the update is successful, it returns the updated todo item with a 200 status code.
+// Update handles the HTTP PUT request to update a specific task item by its ID.
+// It extracts the ID from the URL path, validates it, and then parses the request body to get the updated details of the task item.
+// If the update is successful, it returns the updated task item with a 200 status code.
 // If there are any errors during parsing, validation, or updating, it responds with appropriate error messages and status codes.
 func (c *TodoController) Update() {
 	todoService := c.todoService()
@@ -234,7 +234,7 @@ func (c *TodoController) Update() {
 }
 
 
-// Delete handles the HTTP DELETE request to remove a specific todo item by its ID.
+// Delete handles the HTTP DELETE request to remove a specific task item by its ID.
 // If the deletion is successful, it returns a 204 No Content status code.
 // If there are any errors during deletion or if the item is not found, it responds with appropriate error messages and status codes.
 func (c *TodoController) Delete() {

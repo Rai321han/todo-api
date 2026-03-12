@@ -51,8 +51,8 @@ func NewTodoService(repo TodoRepo) *TodoService {
 }
 
 
-// AddTodo validates the input and creates a new todo item for the specified user.
-// It returns the created todo item or an error if the operation fails.
+// AddTodo validates the input and creates a new task item for the specified user.
+// It returns the created task item or an error if the operation fails.
 func (s *TodoService) AddTodo(todoData *todoModel.Todo, userId int) (todoModel.Todo, error) {
 	if err := validateTodoInput(todoData); err != nil {
 		return todoModel.Todo{}, err
@@ -73,8 +73,8 @@ func (s *TodoService) AddTodo(todoData *todoModel.Todo, userId int) (todoModel.T
 	return createdTodo, nil
 }
 
-// GetTodoByID retrieves a todo item by its ID and the associated user ID.
-// It returns the todo item or an error if the item is not found or if the operation fails.
+// GetTodoByID retrieves a task item by its ID and the associated user ID.
+// It returns the task item or an error if the item is not found or if the operation fails.
 func (s *TodoService) GetTodoByID(id, userID int) (todoModel.Todo, error) {
 	todo, err := s.repo.GetByID(id, userID)
 	if err != nil {
@@ -87,8 +87,8 @@ func (s *TodoService) GetTodoByID(id, userID int) (todoModel.Todo, error) {
 	return todo, nil
 }
 
-// GetAllTodos retrieves a list of todo items for the specified user ID based on the provided list options.
-// It returns a slice of todo items or an error if the operation fails.
+// GetAllTodos retrieves a list of task items for the specified user ID based on the provided list options.
+// It returns a slice of task items or an error if the operation fails.
 func (s *TodoService) GetAllTodos(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
 	normalizedOptions, err := normalizeListOptions(options)
 	if err != nil {
@@ -102,8 +102,8 @@ func (s *TodoService) GetAllTodos(userID int, options todoModel.TodoListOptions)
 	return todos, nil
 }
 
-// UpdateTodo validates the input and updates an existing todo item identified by its ID and associated user ID.
-// It returns the updated todo item or an error if the item is not found or if the operation fails.
+// UpdateTodo validates the input and updates an existing task item identified by its ID and associated user ID.
+// It returns the updated task item or an error if the item is not found or if the operation fails.
 func (s *TodoService) UpdateTodo(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error) {
 	if err := validateTodoInput(todo); err != nil {
 		return todoModel.Todo{}, err
@@ -120,7 +120,7 @@ func (s *TodoService) UpdateTodo(id, userID int, todo *todoModel.Todo) (todoMode
 	return updatedTodo, nil
 }
 
-// DeleteTodo removes a todo item identified by its ID and associated user ID.
+// DeleteTodo removes a task item identified by its ID and associated user ID.
 // It returns an error if the item is not found or if the operation fails.
 func (s *TodoService) DeleteTodo(id, userID int) error {
 	err := s.repo.Delete(id, userID)
@@ -133,7 +133,7 @@ func (s *TodoService) DeleteTodo(id, userID int) error {
 	return nil
 }
 
-// validateTodoInput checks if the provided todo item has valid data.
+// validateTodoInput checks if the provided task item has valid data.
 // It ensures that the title is not empty and trims any leading or trailing whitespace.
 // It returns an error if the input is invalid.
 func validateTodoInput(todo *todoModel.Todo) error {
@@ -150,7 +150,7 @@ func validateTodoInput(todo *todoModel.Todo) error {
 }
 
 
-// normalizeListOptions processes and validates the provided list options for retrieving todo items.
+// normalizeListOptions processes and validates the provided list options for retrieving task items.
 // It sets default values for sorting and pagination if they are not provided and ensures that the values are valid.
 // It returns the normalized list options or an error if the options are invalid.
 // Example usage:
