@@ -73,6 +73,43 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 // GetAll retrieves all items for a specific user from the database.
 // It returns a slice of items or an error if the operation fails.
 func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListResponse, error) {
+	baseQuery, filterArgs, argPos := buildBaseQuery(userID, options)
+
+	totalCount, err := r.countAllByUser(userID)
+	if err != nil {
+		return TodoListResponse{}, err
+	}
+
+	filteredCount, err := r.countFiltered(baseQuery, filterArgs)
+	if err != nil {
+		return TodoListResponse{}, err
+	}
+
+	listQuery, listArgs := buildListQuery(baseQuery, options, filterArgs, argPos)
+
+	rows, err := r.DB.Query(listQuery, listArgs...)
+	if err != nil {
+		return TodoListResponse{}, fmt.Errorf("list todos: %w", err)
+	}
+	defer rows.Close()
+
+	todos, err := scanTodoRows(rows)
+	if err != nil {
+		return TodoListResponse{}, err
+	}
+
+	return TodoListResponse{
+		TotalPages:  calculateTotalPages(filteredCount, options.Limit),
+		CurrentPage: options.Page,
+		Limit:       options.Limit,
+		TotalCount:  totalCount,
+		Todos:       todos,
+	}, nil
+}
+
+// buildBaseQuery constructs the base SQL query for retrieving items based on the user ID and list options.
+// It returns the base query string, a slice of query arguments, and the next argument position for additional filters.
+func buildBaseQuery(userID int, options TodoListOptions) (string, []interface{}, int) {
 	baseQuery := `
 		FROM todos
 		WHERE user_id = $1
@@ -92,52 +129,68 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListRe
 		argPos++
 	}
 
+	return baseQuery, args, argPos
+}
+
+// buildOrderBy constructs the ORDER BY clause for the SQL query based on the list options.
+func buildOrderBy(options TodoListOptions) string {
+	if options.SortBy == "title" {
+		if options.Order == "desc" {
+			return "title DESC"
+		}
+		return "title ASC"
+	}
+
+	if options.Order == "asc" {
+		return "created_at ASC"
+	}
+
+	return "created_at DESC"
+}
+
+
+// buildListQuery constructs the final SQL query for retrieving items based on the base query, list options, and query arguments. 
+// It returns the complete query string and the final slice of query arguments.
+func buildListQuery(baseQuery string, options TodoListOptions, args []interface{}, argPos int) (string, []interface{}) {
+	listQuery := `
+		SELECT id, title, description, is_completed, user_id, created_at, updated_at
+	` + baseQuery + " ORDER BY " + buildOrderBy(options) + fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
+	listArgs := append(append([]interface{}{}, args...), options.Limit, options.Offset())
+
+	return listQuery, listArgs
+}
+
+
+func (r *TodoRepository) countAllByUser(userID int) (int, error) {
 	countQuery := `
 		SELECT COUNT(*)
 		FROM todos
 		WHERE user_id = $1
 	`
+
 	var totalCount int
 	if err := r.DB.QueryRow(countQuery, userID).Scan(&totalCount); err != nil {
-		return TodoListResponse{}, fmt.Errorf("count todos: %w", err)
+		return 0, fmt.Errorf("count todos: %w", err)
 	}
 
+	return totalCount, nil
+}
+
+
+// countFiltered executes a COUNT query based on the provided base query and arguments to determine the number of items that match the filtering criteria.
+func (r *TodoRepository) countFiltered(baseQuery string, args []interface{}) (int, error) {
 	filteredCountQuery := "SELECT COUNT(*) " + baseQuery
+
 	var filteredCount int
 	if err := r.DB.QueryRow(filteredCountQuery, args...).Scan(&filteredCount); err != nil {
-		return TodoListResponse{}, fmt.Errorf("count filtered todos: %w", err)
+		return 0, fmt.Errorf("count filtered todos: %w", err)
 	}
 
-	// Determine the ORDER BY clause based on the SortBy and Order options.
-	// Default sorting is by created_at in descending order.
-	// If SortBy is "title", sort by title; otherwise, sort by created_at.
-	// The Order option determines whether the sorting is ascending or descending.
-	orderBy := "created_at DESC"
-	if options.SortBy == "title" {
-		if options.Order == "desc" {
-			orderBy = "title DESC"
-		} else {
-			orderBy = "title ASC"
-		}
-	} else {
-		if options.Order == "asc" {
-			orderBy = "created_at ASC"
-		} else {
-			orderBy = "created_at DESC"
-		}
-	}
+	return filteredCount, nil
+}
 
-	listQuery := `
-		SELECT id, title, description, is_completed, user_id, created_at, updated_at
-	` + baseQuery + " ORDER BY " + orderBy + fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
-	args = append(args, options.Limit, options.Offset())
-
-	rows, err := r.DB.Query(listQuery, args...)
-	if err != nil {
-		return TodoListResponse{}, fmt.Errorf("list todos: %w", err)
-	}
-	defer rows.Close()
-
+// scanTodoRows iterates over the rows returned from a SQL query and scans each row into a Todo struct, accumulating the results into a slice of Todo items.
+func scanTodoRows(rows *sql.Rows) ([]Todo, error) {
 	var todos []Todo
 	for rows.Next() {
 		var todo Todo
@@ -151,39 +204,26 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListRe
 			&todo.UpdatedAt,
 		)
 		if err != nil {
-			return TodoListResponse{}, fmt.Errorf("scan todo row: %w", err)
+			return nil, fmt.Errorf("scan todo row: %w", err)
 		}
 		todos = append(todos, todo)
 	}
-	if err = rows.Err(); err != nil {
-		return TodoListResponse{}, fmt.Errorf("iterate todo rows: %w", err)
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate todo rows: %w", err)
 	}
 
-	totalPages := 0
-	if filteredCount > 0 {
-		// Calculate total pages based on the filtered count and limit.
-		totalPages = (filteredCount + options.Limit - 1) / options.Limit
+	return todos, nil
+}
+
+func calculateTotalPages(totalItems, limit int) int {
+	if totalItems <= 0 || limit <= 0 {
+		return 0
 	}
-	return TodoListResponse{
-		TotalPages:  totalPages,
-		CurrentPage: options.Page,
-		Limit:       options.Limit,
-		TotalCount:  totalCount,
-		Todos:       todos,
-	}, nil
+
+	return (totalItems + limit - 1) / limit
 }
 
-
-func nullString(s string) interface{} {
-	if s == "" {
-		return nil
-	}
-	return s
-}
-
-func nullBool(b bool) interface{} {
-	return b
-}
 
 
 // Update modifies an existing item in the database.
@@ -220,6 +260,20 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 	}
 	return updatedTodo, nil
 }
+
+
+func nullString(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullBool(b bool) interface{} {
+	return b
+}
+
+
 
 
 

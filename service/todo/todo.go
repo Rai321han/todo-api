@@ -8,10 +8,6 @@ import (
 	todoModel "todo-api/models/todo"
 )
 
-type TodoService struct {
-	repo *todoModel.TodoRepository
-}
-
 
 // Define custom error variables for better error handling and clarity
 var (
@@ -33,6 +29,11 @@ const (
 	defaultLimit = 10
 	maxLimit     = 100
 )
+
+
+type TodoService struct {
+	repo *todoModel.TodoRepository
+}
 
 
 // NewTodoService creates a new instance of TodoService with the provided repository.
