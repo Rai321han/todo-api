@@ -10,7 +10,6 @@ A RESTful Todo API built with Go, Beego, PostgreSQL, and JWT authentication.
 - [API Base URL and Versioning](#api-base-url-and-versioning)
 - [Prerequisites](#prerequisites)
 - [Installation and Setup](#installation-and-setup)
-- [Run the Application](#run-the-application)
 - [API Endpoints](#api-endpoints)
 - [Request and Response Examples](#request-and-response-examples)
 - [Postman Documentation](#postman-documentation)
@@ -27,52 +26,47 @@ This project provides:
 
 ## Tech Stack
 
-- Go (`go.mod` currently targets `1.25`)
+- Go 1.25
 - Beego v2
 - PostgreSQL 16
 - JWT (`github.com/golang-jwt/jwt/v5`)
-- Docker Compose (for local database)
+- GoConvey for testing
+- Docker
 
 ## Project Structure
 
 ```text
-todo-api/
-├── conf/
-│   ├── app.conf
-│   └── app.sample.conf
-├── controllers/
-│   ├── auth.go
-│   └── todo.go
-├── init-db/
-│   └── init.sql
-├── middlewares/
-│   ├── auth_middleware.go
-│   ├── global_exception.go
-│   └── request_logger.go
-├── models/
-│   ├── db/
-│   │   └── db.go
-│   ├── todo/
-│   │   ├── repository.go
-│   │   └── todo.go
-│   └── user/
-│       ├── repository.go
-│       └── user.go
-├── routers/
-│   └── router.go
-├── service/
-│   ├── auth/
-│   │   ├── auth.go
-│   │   └── auth_test.go
-│   └── todo/
-│       ├── todo.go
-│       └── todo_test.go
-├── utils/
-│   └── api_error.go
-├── docker-compose.yml
-├── go.mod
-├── go.sum
-└── main.go
+todo-api/                              # Project root
+├── conf/                              # Application configuration files
+│
+├── controllers/                       # HTTP handlers (API endpoints)
+│
+├── init-db/                           # Database bootstrap scripts
+│   └── init.sql                       # Initial schema and setup SQL
+│
+├── middlewares/                       # Request/response middleware layer
+│   ├── auth_middleware.go             # JWT authentication middleware
+│   ├── global_exception.go            # Global error recovery/handling
+│   └── request_logger.go              # HTTP request logging middleware
+│
+├── models/                            # Data models and DB repositories
+│   ├── db/                            # DB connection setup
+│   ├── todo/                          # Todo model and repository logic
+│   └── user/                          # User model and repository logic
+│
+├── routers/                           # API route registration
+│   └── router.go                      # Route definitions and version groups
+│
+├── service/                           # Business logic layer
+│   ├── auth/                          # Auth business logic and tests
+│   └── todo/                          # Todo business logic and tests
+│
+├── utils/                             # Shared utility helpers
+│
+├── docker-compose-sample.yml          # Sample docker compose for project build and run
+├── go.mod                             # Go module dependencies
+├── go.sum                             # Dependency checksum lock file
+└── main.go                            # Application entrypoint
 ```
 
 ## API Base URL and Versioning
@@ -115,48 +109,35 @@ cp conf/app.sample.conf conf/app.conf
 
 Then update `conf/app.conf` with your database and JWT secret values
 
-4. Start PostgreSQL using Docker Compose.
+3. Build the app and run servers
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
 This also runs schema initialization from `init-db/init.sql`.
 
-5. Download Go dependencies.
-
-```bash
-go mod tidy
-```
-
-## Run the Application
-
-Start the API server:
-
-```bash
-bee run
-```
 
 If successful, the service will be available at:
 
 ```text
-http://localhost:8080
+http://localhost:<defined_port>
 ```
 
 ## API Endpoints
 
 Auth:
 
-- `POST /v1/api/auth/register`
-- `POST /v1/api/auth/login`
+- Register user: `POST /v1/api/auth/register`
+- Login user: `POST /v1/api/auth/login`
 
-Todos (JWT required):
+Todos (JWT Token required):
 
-- `POST /v1/api/todos/`
-- `GET /v1/api/todos/`
-- `GET /v1/api/todos/:id`
-- `PUT /v1/api/todos/:id`
-- `DELETE /v1/api/todos/:id`
+- Create Todo: `POST /v1/api/todos/`
+- Get All Todo: `GET /v1/api/todos/`
+- Get todo by id: `GET /v1/api/todos/:id`
+- Update by id: `PUT /v1/api/todos/:id`
+- Delete by id: `DELETE /v1/api/todos/:id`
 
 Todo list query parameters (`GET /v1/api/todos/`):
 
@@ -164,7 +145,7 @@ Todo list query parameters (`GET /v1/api/todos/`):
 - `sort_by`: `created_at` or `title`
 - `order`: `asc` or `desc`
 - `search`: search text on title
-- `page`: integer, minimum `1`
+- `page`: integer,
 - `limit`: integer,
 
 ## Request and Response Examples
@@ -285,4 +266,8 @@ Official Postman docs for this API:
 
 ```bash
 go test ./...
+
+or
+
+$GOPATH/bin/goconvey
 ```
