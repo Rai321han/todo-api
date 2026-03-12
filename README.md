@@ -104,14 +104,14 @@ cd todo-api
 2. Configure application settings.
 
 ```bash
-cp conf/app.sample.conf conf/app.conf
+mv conf/app.sample.conf conf/app.conf
 ```
 
 Then update `conf/app.conf` with your database and JWT secret values
 
 3. Update compose file
-```
-cp docker-compose-sample.yml docker-compose.yml
+```bash
+mv docker-compose-sample.yml docker-compose.yml
 ```
 
 Then update the variables.
