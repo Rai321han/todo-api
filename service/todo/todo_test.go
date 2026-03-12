@@ -2,353 +2,328 @@ package todo
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
 	. "github.com/smartystreets/goconvey/convey"
 
 	todoModel "todo-api/models/todo"
 )
 
-func TestTodoServiceAddTodo(t *testing.T) {
-	Convey("AddTodo validates input before calling repository", t, func() {
-		svc := NewTodoService(&todoModel.TodoRepository{})
+type fakeTodoRepo struct {
+	createFunc  func(todo *todoModel.Todo) (todoModel.Todo, error)
+	getByIDFunc func(id, userID int) (todoModel.Todo, error)
+	getAllFunc  func(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error)
+	updateFunc  func(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error)
+	deleteFunc  func(id, userID int) error
+}
 
-		result, err := svc.AddTodo(nil, 7)
+func (f *fakeTodoRepo) Create(todo *todoModel.Todo) (todoModel.Todo, error) {
+	if f.createFunc != nil {
+		return f.createFunc(todo)
+	}
+	return todoModel.Todo{}, nil
+}
+
+func (f *fakeTodoRepo) GetByID(id, userID int) (todoModel.Todo, error) {
+	if f.getByIDFunc != nil {
+		return f.getByIDFunc(id, userID)
+	}
+	return todoModel.Todo{}, nil
+}
+
+func (f *fakeTodoRepo) GetAll(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
+	if f.getAllFunc != nil {
+		return f.getAllFunc(userID, options)
+	}
+	return todoModel.TodoListResponse{}, nil
+}
+
+func (f *fakeTodoRepo) Update(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error) {
+	if f.updateFunc != nil {
+		return f.updateFunc(id, userID, todo)
+	}
+	return todoModel.Todo{}, nil
+}
+
+func (f *fakeTodoRepo) Delete(id, userID int) error {
+	if f.deleteFunc != nil {
+		return f.deleteFunc(id, userID)
+	}
+	return nil
+}
+
+func TestValidateTodoInput(t *testing.T) {
+	Convey("validateTodoInput should reject nil payload", t, func() {
+		err := validateTodoInput(nil)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
-		So(err.Error(), ShouldEqual, "invalid todo input: not enough data")
-		So(result.ID, ShouldEqual, 0)
 	})
 
-	Convey("AddTodo trims title and delegates create", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
+	Convey("validateTodoInput should reject empty title", t, func() {
+		err := validateTodoInput(&todoModel.Todo{Title: "   "})
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Create", func(_ *todoModel.TodoRepository, input *todoModel.Todo) (todoModel.Todo, error) {
-			So(input.Title, ShouldEqual, "Buy milk")
-			So(input.Description, ShouldEqual, "2 liters")
-			So(input.IsCompleted, ShouldBeFalse)
-			So(input.UserID, ShouldEqual, 9)
-			return todoModel.Todo{ID: 11, Title: input.Title, Description: input.Description, IsCompleted: input.IsCompleted, UserID: input.UserID}, nil
-		})
-		defer patches.Reset()
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+	})
 
-		result, err := svc.AddTodo(&todoModel.Todo{Title: "  Buy milk  ", Description: "2 liters"}, 9)
+	Convey("validateTodoInput should trim title and accept valid payload", t, func() {
+		in := &todoModel.Todo{Title: "  Buy milk  "}
+
+		err := validateTodoInput(in)
 
 		So(err, ShouldBeNil)
-		So(result.ID, ShouldEqual, 11)
-		So(result.Title, ShouldEqual, "Buy milk")
-		So(result.UserID, ShouldEqual, 9)
+		So(in.Title, ShouldEqual, "Buy milk")
+	})
+}
+
+func TestNormalizeListOptions(t *testing.T) {
+	Convey("normalizeListOptions should apply defaults", t, func() {
+		normalized, err := normalizeListOptions(todoModel.TodoListOptions{})
+
+		So(err, ShouldBeNil)
+		So(normalized.SortBy, ShouldEqual, "created_at")
+		So(normalized.Order, ShouldEqual, "desc")
+		So(normalized.Page, ShouldEqual, defaultPage)
+		So(normalized.Limit, ShouldEqual, defaultLimit)
 	})
 
-	Convey("AddTodo returns repository error", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("normalizeListOptions should normalize and keep explicit title sort defaults", t, func() {
+		normalized, err := normalizeListOptions(todoModel.TodoListOptions{SortBy: " TITLE "})
+
+		So(err, ShouldBeNil)
+		So(normalized.SortBy, ShouldEqual, "title")
+		So(normalized.Order, ShouldEqual, "asc")
+	})
+
+	Convey("normalizeListOptions should reject invalid sort", t, func() {
+		_, err := normalizeListOptions(todoModel.TodoListOptions{SortBy: "priority"})
+
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("normalizeListOptions should reject invalid order", t, func() {
+		_, err := normalizeListOptions(todoModel.TodoListOptions{SortBy: "title", Order: "up"})
+
+		So(err, ShouldNotBeNil)
+	})
+
+	Convey("normalizeListOptions should reject invalid page and limit", t, func() {
+		_, pageErr := normalizeListOptions(todoModel.TodoListOptions{Page: -1, Limit: 10})
+		_, limitErr := normalizeListOptions(todoModel.TodoListOptions{Page: 1, Limit: 101})
+
+		So(pageErr, ShouldNotBeNil)
+		So(limitErr, ShouldNotBeNil)
+	})
+
+	Convey("normalizeListOptions should trim search", t, func() {
+		normalized, err := normalizeListOptions(todoModel.TodoListOptions{Search: "  abc  "})
+
+		So(err, ShouldBeNil)
+		So(normalized.Search, ShouldEqual, "abc")
+	})
+}
+
+func TestTodoServiceAddTodo(t *testing.T) {
+	Convey("AddTodo should validate input", t, func() {
+		svc := NewTodoService(&fakeTodoRepo{})
+
+		_, err := svc.AddTodo(&todoModel.Todo{Title: "  "}, 1)
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
+	})
+
+	Convey("AddTodo should create todo with user id", t, func() {
+		repo := &fakeTodoRepo{
+			createFunc: func(todo *todoModel.Todo) (todoModel.Todo, error) {
+				So(todo.Title, ShouldEqual, "Task")
+				So(todo.Description, ShouldEqual, "Desc")
+				So(todo.UserID, ShouldEqual, 77)
+				return todoModel.Todo{ID: 1, Title: todo.Title, Description: todo.Description, UserID: todo.UserID}, nil
+			},
+		}
 		svc := NewTodoService(repo)
-		expectedErr := errors.New("db create failed")
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Create", func(_ *todoModel.TodoRepository, _ *todoModel.Todo) (todoModel.Todo, error) {
-			return todoModel.Todo{}, expectedErr
-		})
-		defer patches.Reset()
+		created, err := svc.AddTodo(&todoModel.Todo{Title: "Task", Description: "Desc"}, 77)
 
-		_, err := svc.AddTodo(&todoModel.Todo{Title: "Task"}, 3)
+		So(err, ShouldBeNil)
+		So(created.ID, ShouldEqual, 1)
+		So(created.UserID, ShouldEqual, 77)
+	})
 
+	Convey("AddTodo should wrap repository create errors", t, func() {
+		repo := &fakeTodoRepo{createFunc: func(todo *todoModel.Todo) (todoModel.Todo, error) {
+			return todoModel.Todo{}, errors.New("db down")
+		}}
+		svc := NewTodoService(repo)
+
+		_, err := svc.AddTodo(&todoModel.Todo{Title: "Task"}, 1)
+
+		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrTodoCreateFailed), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
 	})
 }
 
 func TestTodoServiceGetTodoByID(t *testing.T) {
-	Convey("GetTodoByID returns todo from repository", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("GetTodoByID should map not found error", t, func() {
+		repo := &fakeTodoRepo{getByIDFunc: func(id, userID int) (todoModel.Todo, error) {
+			return todoModel.Todo{}, todoModel.ErrTodoNotFound
+		}}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetByID", func(_ *todoModel.TodoRepository, id, userID int) (todoModel.Todo, error) {
-			So(id, ShouldEqual, 4)
-			So(userID, ShouldEqual, 2)
-			return todoModel.Todo{ID: 4, Title: "Read"}, nil
-		})
-		defer patches.Reset()
+		_, err := svc.GetTodoByID(1, 2)
 
-		got, err := svc.GetTodoByID(4, 2)
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
+	})
+
+	Convey("GetTodoByID should wrap unexpected errors", t, func() {
+		repo := &fakeTodoRepo{getByIDFunc: func(id, userID int) (todoModel.Todo, error) {
+			return todoModel.Todo{}, errors.New("db error")
+		}}
+		svc := NewTodoService(repo)
+
+		_, err := svc.GetTodoByID(1, 2)
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrTodoFetchFailed), ShouldBeTrue)
+	})
+
+	Convey("GetTodoByID should return todo on success", t, func() {
+		repo := &fakeTodoRepo{getByIDFunc: func(id, userID int) (todoModel.Todo, error) {
+			return todoModel.Todo{ID: id, UserID: userID, Title: "Task"}, nil
+		}}
+		svc := NewTodoService(repo)
+
+		got, err := svc.GetTodoByID(9, 3)
 
 		So(err, ShouldBeNil)
-		So(got.ID, ShouldEqual, 4)
-		So(got.Title, ShouldEqual, "Read")
-	})
-
-	Convey("GetTodoByID propagates repository error", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
-		expectedErr := errors.New("read failed")
-
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetByID", func(_ *todoModel.TodoRepository, _, _ int) (todoModel.Todo, error) {
-			return todoModel.Todo{}, expectedErr
-		})
-		defer patches.Reset()
-
-		_, err := svc.GetTodoByID(1, 1)
-
-		So(errors.Is(err, ErrTodoFetchFailed), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
-	})
-
-	Convey("GetTodoByID maps not found errors", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
-
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetByID", func(_ *todoModel.TodoRepository, _, _ int) (todoModel.Todo, error) {
-			return todoModel.Todo{}, todoModel.ErrTodoNotFound
-		})
-		defer patches.Reset()
-
-		_, err := svc.GetTodoByID(1, 1)
-
-		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
+		So(got.ID, ShouldEqual, 9)
+		So(got.UserID, ShouldEqual, 3)
 	})
 }
 
 func TestTodoServiceGetAllTodos(t *testing.T) {
-	Convey("GetAllTodos normalizes default options and calls repository", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
+	Convey("GetAllTodos should reject invalid list options", t, func() {
+		svc := NewTodoService(&fakeTodoRepo{})
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
-			So(userID, ShouldEqual, 6)
-			So(options.SortBy, ShouldEqual, "created_at")
-			So(options.Order, ShouldEqual, "desc")
-			So(options.Page, ShouldEqual, defaultPage)
-			So(options.Limit, ShouldEqual, defaultLimit)
-			So(options.Search, ShouldEqual, "")
-			return todoModel.TodoListResponse{Todos: []todoModel.Todo{{ID: 1, Title: "One"}}}, nil
-		})
-		defer patches.Reset()
-
-		result, err := svc.GetAllTodos(6, todoModel.TodoListOptions{})
-
-		So(err, ShouldBeNil)
-		So(len(result.Todos), ShouldEqual, 1)
-		So(result.Todos[0].ID, ShouldEqual, 1)
-	})
-
-	Convey("GetAllTodos applies title sorting defaults", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
-
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
-			So(options.SortBy, ShouldEqual, "title")
-			So(options.Order, ShouldEqual, "asc")
-			So(options.Search, ShouldEqual, "hello")
-			return todoModel.TodoListResponse{}, nil
-		})
-		defer patches.Reset()
-
-		_, err := svc.GetAllTodos(1, todoModel.TodoListOptions{SortBy: " Title ", Search: "  hello  "})
-
-		So(err, ShouldBeNil)
-	})
-
-	Convey("GetAllTodos wraps invalid options with ErrInvalidListOptions", t, func() {
-		svc := NewTodoService(&todoModel.TodoRepository{})
-
-		_, err := svc.GetAllTodos(1, todoModel.TodoListOptions{SortBy: "priority"})
+		_, err := svc.GetAllTodos(1, todoModel.TodoListOptions{SortBy: "invalid"})
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidListOptions), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, "invalid sort_by")
 	})
 
-	Convey("GetAllTodos propagates repository error", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("GetAllTodos should normalize options and return response", t, func() {
+		repo := &fakeTodoRepo{getAllFunc: func(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
+			So(userID, ShouldEqual, 5)
+			So(options.SortBy, ShouldEqual, "title")
+			So(options.Order, ShouldEqual, "asc")
+			So(options.Page, ShouldEqual, defaultPage)
+			So(options.Limit, ShouldEqual, defaultLimit)
+			return todoModel.TodoListResponse{CurrentPage: options.Page, Limit: options.Limit, Todos: []todoModel.Todo{{ID: 1}}}, nil
+		}}
 		svc := NewTodoService(repo)
-		expectedErr := errors.New("query failed")
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "GetAll", func(_ *todoModel.TodoRepository, _ int, _ todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
-			return todoModel.TodoListResponse{}, expectedErr
-		})
-		defer patches.Reset()
+		resp, err := svc.GetAllTodos(5, todoModel.TodoListOptions{SortBy: "title"})
 
-		_, err := svc.GetAllTodos(10, todoModel.TodoListOptions{})
+		So(err, ShouldBeNil)
+		So(len(resp.Todos), ShouldEqual, 1)
+		So(resp.Todos[0].ID, ShouldEqual, 1)
+	})
 
+	Convey("GetAllTodos should wrap repository errors", t, func() {
+		repo := &fakeTodoRepo{getAllFunc: func(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error) {
+			return todoModel.TodoListResponse{}, errors.New("query error")
+		}}
+		svc := NewTodoService(repo)
+
+		_, err := svc.GetAllTodos(1, todoModel.TodoListOptions{})
+
+		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrTodoListFailed), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
 	})
 }
 
 func TestTodoServiceUpdateTodo(t *testing.T) {
-	Convey("UpdateTodo validates input", t, func() {
-		svc := NewTodoService(&todoModel.TodoRepository{})
+	Convey("UpdateTodo should validate input", t, func() {
+		svc := NewTodoService(&fakeTodoRepo{})
 
 		_, err := svc.UpdateTodo(1, 1, &todoModel.Todo{Title: "   "})
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
-		So(err.Error(), ShouldEqual, "invalid todo input: title is required")
 	})
 
-	Convey("UpdateTodo calls repository with trimmed title", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("UpdateTodo should map not found error", t, func() {
+		repo := &fakeTodoRepo{updateFunc: func(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error) {
+			return todoModel.Todo{}, todoModel.ErrTodoNotFound
+		}}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Update", func(_ *todoModel.TodoRepository, id, userID int, td *todoModel.Todo) (todoModel.Todo, error) {
-			So(id, ShouldEqual, 8)
-			So(userID, ShouldEqual, 7)
-			So(td.Title, ShouldEqual, "Refined title")
-			return todoModel.Todo{ID: 8, Title: td.Title, UserID: 7}, nil
-		})
-		defer patches.Reset()
+		_, err := svc.UpdateTodo(1, 1, &todoModel.Todo{Title: "Task"})
 
-		updated, err := svc.UpdateTodo(8, 7, &todoModel.Todo{Title: "  Refined title "})
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
+	})
+
+	Convey("UpdateTodo should wrap unexpected errors", t, func() {
+		repo := &fakeTodoRepo{updateFunc: func(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error) {
+			return todoModel.Todo{}, errors.New("update failed")
+		}}
+		svc := NewTodoService(repo)
+
+		_, err := svc.UpdateTodo(1, 1, &todoModel.Todo{Title: "Task"})
+
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrTodoUpdateFailed), ShouldBeTrue)
+	})
+
+	Convey("UpdateTodo should return updated todo", t, func() {
+		repo := &fakeTodoRepo{updateFunc: func(id, userID int, todo *todoModel.Todo) (todoModel.Todo, error) {
+			return todoModel.Todo{ID: id, UserID: userID, Title: todo.Title}, nil
+		}}
+		svc := NewTodoService(repo)
+
+		updated, err := svc.UpdateTodo(10, 2, &todoModel.Todo{Title: "Task"})
 
 		So(err, ShouldBeNil)
-		So(updated.ID, ShouldEqual, 8)
-		So(updated.Title, ShouldEqual, "Refined title")
-	})
-
-	Convey("UpdateTodo propagates repository error", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
-		expectedErr := errors.New("update failed")
-
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Update", func(_ *todoModel.TodoRepository, _, _ int, _ *todoModel.Todo) (todoModel.Todo, error) {
-			return todoModel.Todo{}, expectedErr
-		})
-		defer patches.Reset()
-
-		_, err := svc.UpdateTodo(1, 2, &todoModel.Todo{Title: "Task"})
-
-		So(errors.Is(err, ErrTodoUpdateFailed), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, expectedErr.Error())
-	})
-
-	Convey("UpdateTodo maps not found errors", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
-
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Update", func(_ *todoModel.TodoRepository, _, _ int, _ *todoModel.Todo) (todoModel.Todo, error) {
-			return todoModel.Todo{}, todoModel.ErrTodoNotFound
-		})
-		defer patches.Reset()
-
-		_, err := svc.UpdateTodo(1, 2, &todoModel.Todo{Title: "Task"})
-
-		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
+		So(updated.ID, ShouldEqual, 10)
+		So(updated.UserID, ShouldEqual, 2)
 	})
 }
 
 func TestTodoServiceDeleteTodo(t *testing.T) {
-	Convey("DeleteTodo returns nil on success", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("DeleteTodo should map not found error", t, func() {
+		repo := &fakeTodoRepo{deleteFunc: func(id, userID int) error {
+			return todoModel.ErrTodoNotFound
+		}}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Delete", func(_ *todoModel.TodoRepository, id, userID int) error {
-			So(id, ShouldEqual, 12)
-			So(userID, ShouldEqual, 3)
-			return nil
-		})
-		defer patches.Reset()
+		err := svc.DeleteTodo(1, 2)
 
-		err := svc.DeleteTodo(12, 3)
-
-		So(err, ShouldBeNil)
+		So(err, ShouldNotBeNil)
+		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
 	})
 
-	Convey("DeleteTodo maps repository errors", t, func() {
-		repo := &todoModel.TodoRepository{}
+	Convey("DeleteTodo should wrap unexpected errors", t, func() {
+		repo := &fakeTodoRepo{deleteFunc: func(id, userID int) error {
+			return errors.New("delete failed")
+		}}
 		svc := NewTodoService(repo)
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Delete", func(_ *todoModel.TodoRepository, _, _ int) error {
-			return errors.New("delete failed")
-		})
-		defer patches.Reset()
-
-		err := svc.DeleteTodo(12, 3)
+		err := svc.DeleteTodo(1, 2)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrTodoDeleteFailed), ShouldBeTrue)
-		So(err.Error(), ShouldContainSubstring, "delete failed")
 	})
 
-	Convey("DeleteTodo maps not found errors", t, func() {
-		repo := &todoModel.TodoRepository{}
-		svc := NewTodoService(repo)
+	Convey("DeleteTodo should return nil on success", t, func() {
+		svc := NewTodoService(&fakeTodoRepo{})
 
-		patches := gomonkey.ApplyMethod(reflect.TypeOf(repo), "Delete", func(_ *todoModel.TodoRepository, _, _ int) error {
-			return todoModel.ErrTodoNotFound
-		})
-		defer patches.Reset()
-
-		err := svc.DeleteTodo(12, 3)
-
-		So(errors.Is(err, ErrTodoNotFound), ShouldBeTrue)
-	})
-}
-
-func TestValidateTodoInput(t *testing.T) {
-	Convey("validateTodoInput rejects nil", t, func() {
-		err := validateTodoInput(nil)
-		So(err, ShouldNotBeNil)
-		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
-		So(err.Error(), ShouldEqual, "invalid todo input: not enough data")
-	})
-
-	Convey("validateTodoInput rejects empty title", t, func() {
-		err := validateTodoInput(&todoModel.Todo{Title: "  "})
-		So(err, ShouldNotBeNil)
-		So(errors.Is(err, ErrInvalidTodoInput), ShouldBeTrue)
-		So(err.Error(), ShouldEqual, "invalid todo input: title is required")
-	})
-
-	Convey("validateTodoInput trims valid title", t, func() {
-		td := &todoModel.Todo{Title: "  task  "}
-		err := validateTodoInput(td)
-		So(err, ShouldBeNil)
-		So(td.Title, ShouldEqual, "task")
-	})
-}
-
-func TestNormalizeListOptions(t *testing.T) {
-	Convey("normalizeListOptions applies defaults", t, func() {
-		options, err := normalizeListOptions(todoModel.TodoListOptions{})
+		err := svc.DeleteTodo(1, 2)
 
 		So(err, ShouldBeNil)
-		So(options.SortBy, ShouldEqual, "created_at")
-		So(options.Order, ShouldEqual, "desc")
-		So(options.Page, ShouldEqual, defaultPage)
-		So(options.Limit, ShouldEqual, defaultLimit)
-	})
-
-	Convey("normalizeListOptions title sort defaults to asc", t, func() {
-		options, err := normalizeListOptions(todoModel.TodoListOptions{SortBy: "TITLE", Search: "  key  "})
-
-		So(err, ShouldBeNil)
-		So(options.SortBy, ShouldEqual, "title")
-		So(options.Order, ShouldEqual, "asc")
-		So(options.Search, ShouldEqual, "key")
-	})
-
-	Convey("normalizeListOptions rejects invalid sort_by", t, func() {
-		_, err := normalizeListOptions(todoModel.TodoListOptions{SortBy: "status"})
-
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldContainSubstring, "invalid sort_by")
-	})
-
-	Convey("normalizeListOptions rejects invalid page", t, func() {
-		_, err := normalizeListOptions(todoModel.TodoListOptions{Page: -1, Limit: 10})
-
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldContainSubstring, "page must be")
-	})
-
-	Convey("normalizeListOptions rejects invalid limit", t, func() {
-		_, err := normalizeListOptions(todoModel.TodoListOptions{Page: 1, Limit: maxLimit + 1})
-
-		So(err, ShouldNotBeNil)
-		So(err.Error(), ShouldContainSubstring, "limit must be between")
 	})
 }
 

@@ -32,12 +32,21 @@ const (
 
 
 type TodoService struct {
-	repo *todoModel.TodoRepository
+	repo TodoRepo
+}
+
+// TodoRepo defines repository behavior required by TodoService.
+type TodoRepo interface {
+	Create(todo *todoModel.Todo) (todoModel.Todo, error)
+	GetByID(id, userID int) (todoModel.Todo, error)
+	GetAll(userID int, options todoModel.TodoListOptions) (todoModel.TodoListResponse, error)
+	Update(id int, userID int, todo *todoModel.Todo) (todoModel.Todo, error)
+	Delete(id int, userID int) error
 }
 
 
 // NewTodoService creates a new instance of TodoService with the provided repository.
-func NewTodoService(repo *todoModel.TodoRepository) *TodoService {
+func NewTodoService(repo TodoRepo) *TodoService {
 	return &TodoService{repo: repo}
 }
 
