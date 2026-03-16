@@ -36,10 +36,9 @@ func AuthMiddleware(ctx *context.Context) {
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 
-	// hmacSampleSecret is a []byte containing the secret, e.g. []byte("my_secret_key")
+		// hmacSampleSecret is a []byte containing the secret, e.g. []byte("my_secret_key")
 		return hmacSampleSecret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
-
 
 	if err != nil || !token.Valid {
 		ctx.Output.SetStatus(401)

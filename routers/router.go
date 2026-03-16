@@ -10,18 +10,17 @@ import (
 func init() {
 	ns := beego.NewNamespace("/v1/",
 		beego.NSNamespace("/api",
-				beego.NSNamespace("/auth",
-					beego.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
-					beego.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
-				),
-	
-				beego.NSNamespace("/todos",
-					beego.NSBefore(middlewares.AuthMiddleware),
-					beego.NSRouter("/", &controllers.TodoController{}, "get:GetAll;post:Create"),
-					beego.NSRouter("/:id", &controllers.TodoController{}, "get:GetByID;put:Update;delete:Delete"),
-				),
+			beego.NSNamespace("/auth",
+				beego.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
+				beego.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
+			),
+
+			beego.NSNamespace("/todos",
+				beego.NSBefore(middlewares.AuthMiddleware),
+				beego.NSRouter("/", &controllers.TodoController{}, "get:GetAll;post:Create"),
+				beego.NSRouter("/:id", &controllers.TodoController{}, "get:GetByID;put:Update;delete:Delete"),
+			),
 		),
-		
 	)
 
 	beego.AddNamespace(ns)

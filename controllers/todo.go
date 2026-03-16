@@ -51,7 +51,6 @@ func (c *TodoController) parseTodoID() (int, error) {
 	return id, nil
 }
 
-
 // handleTodoError is a helper method to centralize error handling for task-related operations.
 // It checks the type of error and responds with appropriate HTTP status codes and messages.
 // For known validation errors, it returns a 400 Bad Request status with the error message.
@@ -74,11 +73,10 @@ func (c *TodoController) handleTodoError(action string, err error) {
 	}
 }
 
-
 // decodeJSONBody is a helper function that decodes a JSON request body into the provided destination struct.
 // It uses a JSON decoder that disallows unknown fields to ensure that the request body only contains expected fields.
 // If the decoding fails due to invalid JSON or if there are extra fields in the request body, it returns an error with a descriptive message.
-func decodeJSONBody(body io.Reader, dst interface{}) error {
+func decodeJSONBody(body io.Reader, dst any) error {
 	decoder := json.NewDecoder(body)
 	decoder.DisallowUnknownFields()
 
@@ -86,7 +84,7 @@ func decodeJSONBody(body io.Reader, dst interface{}) error {
 		return fmt.Errorf("invalid request body: %w", err)
 	}
 
-	var extra interface{}
+	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return fmt.Errorf("invalid request body: request body must contain a single JSON object")
 	}
@@ -94,7 +92,7 @@ func decodeJSONBody(body io.Reader, dst interface{}) error {
 	return nil
 }
 
-// Create handles the HTTP POST request to create a new task item. 
+// Create handles the HTTP POST request to create a new task item.
 // It parses the request body to extract the task details, validates the input, and then calls the service layer to add the new task item to the database.
 // If successful, it returns the created task item with a 201 status code.
 // If there are any errors during parsing, validation, or creation, it responds with appropriate error messages and status codes.
@@ -118,7 +116,6 @@ func (c *TodoController) Create() {
 	c.Data["json"] = createdTodo
 	c.ServeJSON()
 }
-
 
 // GetByID handles the HTTP GET request to retrieve a specific task item by its ID.
 // It extracts the ID from the URL path, validates it, and then calls the service layer to fetch the corresponding task item from the database.
@@ -144,7 +141,6 @@ func (c *TodoController) GetByID() {
 	c.ServeJSON()
 }
 
-
 // GetAll handles the HTTP GET request to retrieve all task items for the authenticated user.
 // If successful, it returns a list of task items with a 200 status code.
 // If there are any errors during retrieval or if no items are found, it responds with appropriate error messages and status codes.
@@ -167,7 +163,6 @@ func (c *TodoController) GetAll() {
 	c.Data["json"] = todos
 	c.ServeJSON()
 }
-
 
 // parseTodoListOptions extracts and validates query parameters from the HTTP request to construct a TodoListOptions struct.
 // It handles parameters for filtering by status, sorting, pagination, and search.
@@ -214,7 +209,6 @@ func parseTodoListOptions(c *TodoController) (todo.TodoListOptions, error) {
 	return options, nil
 }
 
-
 // Update handles the HTTP PUT request to update a specific task item by its ID.
 // It extracts the ID from the URL path, validates it, and then parses the request body to get the updated details of the task item.
 // If the update is successful, it returns the updated task item with a 200 status code.
@@ -233,7 +227,7 @@ func (c *TodoController) Update() {
 		utils.RespondWithError(c.Ctx, 400, err.Error())
 		return
 	}
-	
+
 	updatedTodo, err := todoService.UpdateTodo(id, userId, &updatedData)
 
 	if err != nil {
@@ -244,7 +238,6 @@ func (c *TodoController) Update() {
 	c.Data["json"] = updatedTodo
 	c.ServeJSON()
 }
-
 
 // Delete handles the HTTP DELETE request to remove a specific task item by its ID.
 // If the deletion is successful, it returns a 204 No Content status code.

@@ -31,13 +31,13 @@ func (f *fakeUserRepo) Create(user *userModel.User) error {
 }
 
 const (
-	fakeValidEmail    = "user@example.com"
-	fakeBadEmail = "bad-email"
-	fakeUsername = "testuser"
+	fakeValidEmail = "user@example.com"
+	fakeBadEmail   = "bad-email"
+	fakeUsername   = "testuser"
 
 	plainTextPassword = "plain-pass"
-	wrongPassword = "wrong-pass"
-	jwtSecret = "jwt_secret"
+	wrongPassword     = "wrong-pass"
+	jwtSecret         = "jwt_secret"
 )
 
 func TestIsValidEmail(t *testing.T) {
@@ -150,7 +150,7 @@ func TestAuthServiceGenerateToken(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(tokenString, ShouldNotBeBlank)
 
-		parsed, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		parsed, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 			So(token.Method.Alg(), ShouldEqual, jwt.SigningMethodHS256.Alg())
 			return []byte(jwtSecret), nil
 		})
@@ -239,11 +239,10 @@ func TestAuthServiceLogin(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(token, ShouldNotBeBlank)
 
-		parsed, parseErr := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		parsed, parseErr := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 			return []byte(jwtSecret), nil
 		})
 		So(parseErr, ShouldBeNil)
 		So(parsed.Valid, ShouldBeTrue)
 	})
 }
-

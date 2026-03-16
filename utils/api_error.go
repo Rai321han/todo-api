@@ -6,8 +6,8 @@ import (
 
 // APIError represents a standardized error response structure for the API, containing an error message and an HTTP status code.
 type APIError struct {
-	Error    string `json:"error"`
-	StatusCode int `json:"code"`
+	Error      string `json:"error"`
+	StatusCode int    `json:"code"`
 }
 
 // RespondWithError is a helper function to send standardized JSON error responses.
@@ -15,7 +15,7 @@ type APIError struct {
 func RespondWithError(ctx *context.Context, statusCode int, message string) {
 	ctx.Output.SetStatus(statusCode)
 	resp := APIError{
-		Error:    message,
+		Error:      message,
 		StatusCode: statusCode,
 	}
 	ctx.Output.JSON(resp, false, false)

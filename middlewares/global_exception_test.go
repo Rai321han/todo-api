@@ -34,7 +34,7 @@ func TestRecoveryFilterChainRecoversPanic(t *testing.T) {
 
 		So(res.Code, ShouldEqual, http.StatusInternalServerError)
 
-		var payload map[string]interface{}
+		var payload map[string]any
 		err := json.Unmarshal(res.Body.Bytes(), &payload)
 		So(err, ShouldBeNil)
 		So(payload["error"], ShouldEqual, "internal server error.")
@@ -58,5 +58,3 @@ func TestRecoveryFilterChainPassThrough(t *testing.T) {
 		So(res.Code, ShouldEqual, http.StatusOK)
 	})
 }
-
-

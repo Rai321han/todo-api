@@ -14,7 +14,7 @@ type TodoRepository struct {
 	DB *sql.DB
 }
 
-// Create inserts a new item into the database. 
+// Create inserts a new item into the database.
 // It takes a pointer to a task struct as input and returns an error if the operation fails or the created task item with its ID populated if successful.
 func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	var createdTodo Todo
@@ -37,10 +37,8 @@ func (r *TodoRepository) Create(todo *Todo) (Todo, error) {
 	createdTodo.IsCompleted = todo.IsCompleted
 	createdTodo.UserID = todo.UserID
 
-
 	return createdTodo, nil
 }
-
 
 // GetByID retrieves a item from the database by its ID and user ID.
 // It returns the item if found and accessible by the user, or an error if the item is not found.
@@ -67,7 +65,6 @@ func (r *TodoRepository) GetByID(id, userID int) (Todo, error) {
 	}
 	return todo, nil
 }
-
 
 // GetAll retrieves all items for a specific user from the database.
 // It returns a slice of items or an error if the operation fails.
@@ -108,12 +105,12 @@ func (r *TodoRepository) GetAll(userID int, options TodoListOptions) (TodoListRe
 
 // buildBaseQuery constructs the base SQL query for retrieving items based on the user ID and list options.
 // It returns the base query string, a slice of query arguments, and the next argument position for additional filters.
-func buildBaseQuery(userID int, options TodoListOptions) (string, []interface{}, int) {
+func buildBaseQuery(userID int, options TodoListOptions) (string, []any, int) {
 	baseQuery := `
 		FROM todos
 		WHERE user_id = $1
 	`
-	args := []interface{}{userID}
+	args := []any{userID}
 	argPos := 2
 
 	if options.Status != nil {
@@ -147,18 +144,16 @@ func buildOrderBy(options TodoListOptions) string {
 	return "created_at DESC"
 }
 
-
-// buildListQuery constructs the final SQL query for retrieving items based on the base query, list options, and query arguments. 
+// buildListQuery constructs the final SQL query for retrieving items based on the base query, list options, and query arguments.
 // It returns the complete query string and the final slice of query arguments.
-func buildListQuery(baseQuery string, options TodoListOptions, args []interface{}, argPos int) (string, []interface{}) {
+func buildListQuery(baseQuery string, options TodoListOptions, args []any, argPos int) (string, []any) {
 	listQuery := `
 		SELECT id, title, description, is_completed, user_id, created_at, updated_at
 	` + baseQuery + " ORDER BY " + buildOrderBy(options) + fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
-	listArgs := append(append([]interface{}{}, args...), options.Limit, options.Offset())
+	listArgs := append(append([]any{}, args...), options.Limit, options.Offset())
 
 	return listQuery, listArgs
 }
-
 
 func (r *TodoRepository) countAllByUser(userID int) (int, error) {
 	countQuery := `
@@ -175,9 +170,8 @@ func (r *TodoRepository) countAllByUser(userID int) (int, error) {
 	return totalCount, nil
 }
 
-
 // countFiltered executes a COUNT query based on the provided base query and arguments to determine the number of items that match the filtering criteria.
-func (r *TodoRepository) countFiltered(baseQuery string, args []interface{}) (int, error) {
+func (r *TodoRepository) countFiltered(baseQuery string, args []any) (int, error) {
 	filteredCountQuery := "SELECT COUNT(*) " + baseQuery
 
 	var filteredCount int
@@ -223,8 +217,6 @@ func calculateTotalPages(totalItems, limit int) int {
 	return (totalItems + limit - 1) / limit
 }
 
-
-
 // Update modifies an existing item in the database.
 // Update can update the title, description or is_completed fields of the item.
 // It takes a pointer to a struct as input and returns the updated item or an error if the operation fails.
@@ -260,21 +252,16 @@ func (r *TodoRepository) Update(id int, userId int, todo *Todo) (Todo, error) {
 	return updatedTodo, nil
 }
 
-
-func nullString(s string) interface{} {
+func nullString(s string) any {
 	if s == "" {
 		return nil
 	}
 	return s
 }
 
-func nullBool(b bool) interface{} {
+func nullBool(b bool) any {
 	return b
 }
-
-
-
-
 
 // Delete removes a item from the database based on its ID and user ID.
 // It returns an error if the operation fails or if the item is not found.

@@ -5,9 +5,7 @@ go 1.25
 require github.com/beego/beego/v2 v2.3.9
 
 require (
-	github.com/agiledragon/gomonkey/v2 v2.13.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.11.2
 	github.com/smartystreets/goconvey v1.8.1
 	golang.org/x/crypto v0.48.0

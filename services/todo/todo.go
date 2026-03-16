@@ -8,19 +8,18 @@ import (
 	todoModel "todo-api/models/todo"
 )
 
-
 // Define custom error variables for better error handling and clarity
 var (
-	ErrInvalidTodoInput  = errors.New("invalid todo input")
-	ErrInvalidTodoID     = errors.New("invalid todo id")
-	ErrInvalidUserID     = errors.New("invalid user id")
+	ErrInvalidTodoInput   = errors.New("invalid todo input")
+	ErrInvalidTodoID      = errors.New("invalid todo id")
+	ErrInvalidUserID      = errors.New("invalid user id")
 	ErrInvalidListOptions = errors.New("invalid todo list options")
-	ErrTodoNotFound      = errors.New("todo not found")
-	ErrTodoCreateFailed  = errors.New("failed to create todo item")
-	ErrTodoFetchFailed   = errors.New("failed to retrieve todo item")
-	ErrTodoListFailed    = errors.New("failed to retrieve todo items")
-	ErrTodoUpdateFailed  = errors.New("failed to update todo item")
-	ErrTodoDeleteFailed  = errors.New("failed to delete todo item")
+	ErrTodoNotFound       = errors.New("todo not found")
+	ErrTodoCreateFailed   = errors.New("failed to create todo item")
+	ErrTodoFetchFailed    = errors.New("failed to retrieve todo item")
+	ErrTodoListFailed     = errors.New("failed to retrieve todo items")
+	ErrTodoUpdateFailed   = errors.New("failed to update todo item")
+	ErrTodoDeleteFailed   = errors.New("failed to delete todo item")
 )
 
 // Define constants for default pagination values and maximum limits
@@ -29,7 +28,6 @@ const (
 	defaultLimit = 10
 	maxLimit     = 100
 )
-
 
 type TodoService struct {
 	repo TodoRepo
@@ -44,12 +42,10 @@ type TodoRepo interface {
 	Delete(id int, userID int) error
 }
 
-
 // NewTodoService creates a new instance of TodoService with the provided repository.
 func NewTodoService(repo TodoRepo) *TodoService {
 	return &TodoService{repo: repo}
 }
-
 
 // AddTodo validates the input and creates a new task item for the specified user.
 // It returns the created task item or an error if the operation fails.
@@ -149,21 +145,23 @@ func validateTodoInput(todo *todoModel.Todo) error {
 	return nil
 }
 
-
 // normalizeListOptions processes and validates the provided list options for retrieving task items.
 // It sets default values for sorting and pagination if they are not provided and ensures that the values are valid.
 // It returns the normalized list options or an error if the options are invalid.
 // Example usage:
-// options := todoModel.TodoListOptions{
-//     SortBy: "title",
-//     Order:  "asc",
-//     Page:   1,
-//     Limit:  20,
-// }
+//
+//	options := todoModel.TodoListOptions{
+//	    SortBy: "title",
+//	    Order:  "asc",
+//	    Page:   1,
+//	    Limit:  20,
+//	}
+//
 // normalizedOptions, err := normalizeListOptions(options)
-// if err != nil {
-//     // Handle error
-// }
+//
+//	if err != nil {
+//	    // Handle error
+//	}
 func normalizeListOptions(options todoModel.TodoListOptions) (todoModel.TodoListOptions, error) {
 	// Set default sorting field to "created_at" if not provided
 	if options.SortBy == "" {
@@ -195,7 +193,7 @@ func normalizeListOptions(options todoModel.TodoListOptions) (todoModel.TodoList
 		return todoModel.TodoListOptions{}, fmt.Errorf("invalid order. allowed values: asc, desc")
 	} else {
 		// Set the normalized order back to options to ensure consistent formatting
-		options.Order = order 
+		options.Order = order
 	}
 
 	if options.Page == 0 {

@@ -19,7 +19,6 @@ type fakeTodoRepo struct {
 	deleteFunc  func(id, userID int) error
 }
 
-
 func (f *fakeTodoRepo) Create(todo *todoModel.Todo) (todoModel.Todo, error) {
 	if f.createFunc != nil {
 		return f.createFunc(todo)
@@ -329,4 +328,3 @@ func TestTodoServiceDeleteTodo(t *testing.T) {
 		So(err, ShouldBeNil)
 	})
 }
-

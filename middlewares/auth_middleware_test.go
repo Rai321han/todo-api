@@ -48,7 +48,6 @@ func makeToken(t *testing.T, secret string, claims jwt.MapClaims) string {
 	return tokenString
 }
 
-
 // runAuthMiddlewareSafely executes the AuthMiddleware and recovers from any panic that occurs during its execution.
 // It returns a boolean indicating whether a panic occurred.
 // This is useful for testing scenarios where the middleware might panic due to invalid input or other issues, allowing the test to assert on the expected behavior without crashing the test suite.
@@ -154,4 +153,3 @@ func TestAuthMiddlewareInvalidTokenReturnsJSONError(t *testing.T) {
 		So(payload["error"], ShouldEqual, "invalid or expired token")
 	})
 }
-

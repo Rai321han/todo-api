@@ -107,4 +107,3 @@ func TestInitDB(t *testing.T) {
 		So(func() { InitDB() }, ShouldPanicWith, "Failed to ping the database: ping failed")
 	})
 }
-

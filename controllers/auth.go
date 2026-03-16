@@ -15,7 +15,6 @@ import (
 	beego "github.com/beego/beego/v2/server/web"
 )
 
-
 type AuthController struct {
 	beego.Controller
 }
@@ -24,7 +23,7 @@ func (c *AuthController) authService() *auth.AuthService {
 	repo := &userModel.UserRepository{DB: db.DB}
 	// get secret form app.conf
 	secret, err := beego.AppConfig.String("secret::JWT_SECRET")
-	
+
 	if err != nil {
 		log.Fatal("Failed to read secret key from config")
 		panic(fmt.Sprintf("Failed to read secret key from config: %v", err))
@@ -54,7 +53,7 @@ func (c *AuthController) handleAuthError(action string, err error) {
 	}
 }
 
-func decodeAuthJSONBody(body io.Reader, dst interface{}) error {
+func decodeAuthJSONBody(body io.Reader, dst any) error {
 	decoder := json.NewDecoder(body)
 	decoder.DisallowUnknownFields()
 
@@ -62,7 +61,7 @@ func decodeAuthJSONBody(body io.Reader, dst interface{}) error {
 		return fmt.Errorf("invalid request body: %w", err)
 	}
 
-	var extra interface{}
+	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return fmt.Errorf("invalid request body: request body must contain a single JSON object")
 	}

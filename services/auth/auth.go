@@ -15,7 +15,7 @@ import (
 // AuthService provides methods for user registration and authentication.
 // It interacts with the UserRepository to manage user data and uses JWT for token generation.
 type AuthService struct {
-	repo UserRepo
+	repo      UserRepo
 	JwtSecret string
 }
 
@@ -62,7 +62,7 @@ func NewAuthService(repo UserRepo, jwtSecret string) *AuthService {
 	return &AuthService{repo: repo, JwtSecret: jwtSecret}
 }
 
-// Register registers a new user by validating the email format, 
+// Register registers a new user by validating the email format,
 // checking for existing users, hashing the password, and creating the user in the database.
 // It returns an error if any of these steps fail.
 func (s *AuthService) Register(newUser *user.User) error {
@@ -72,11 +72,11 @@ func (s *AuthService) Register(newUser *user.User) error {
 
 	newUser.Username = strings.TrimSpace(newUser.Username)
 	newUser.Email = normalizeEmail(newUser.Email)
-	
+
 	if !isValidEmail(newUser.Email) {
 		return ErrInvalidEmailFormat
 	}
-	
+
 	if newUser.Username == "" {
 		return fmt.Errorf("%w: username is required", ErrInvalidAuthInput)
 	}
@@ -84,13 +84,12 @@ func (s *AuthService) Register(newUser *user.User) error {
 	if newUser.Password == "" {
 		return fmt.Errorf("%w: password is required", ErrInvalidAuthInput)
 	}
-	
 
 	_, err := s.repo.GetUserByEmail(newUser.Email)
 	if err == nil {
 		return ErrUserAlreadyExists
 	}
-	
+
 	if !errors.Is(err, user.ErrUserNotFound) {
 		return fmt.Errorf("%w: %v", ErrAuthRegisterFailed, err)
 	}
@@ -132,7 +131,6 @@ func (s *AuthService) GenerateToken(user *user.User) (string, error) {
 
 	return tokenString, nil
 }
-
 
 // Login authenticates a user by validating the email format, retrieving the user from the database,
 // checking the password hash, and generating a JWT token if the credentials are valid.
