@@ -12,6 +12,7 @@ func init() {
 			beego.NSNamespace("/auth",
 				beego.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
 				beego.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
+				beego.NSRouter("/logout", &controllers.AuthController{}, "post:Logout"),
 				beego.NSRouter("/me", &controllers.AuthController{}, "get:Me"),
 			),
 

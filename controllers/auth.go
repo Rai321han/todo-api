@@ -140,6 +140,28 @@ func (c *AuthController) Login() {
 	c.ServeJSON()
 }
 
+func (c *AuthController) Logout() {
+	isSecureCookie := strings.ToLower(strings.TrimSpace(beego.BConfig.RunMode)) == "prod"
+
+	expiredCookie := func(name string) *http.Cookie {
+		return &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   isSecureCookie,
+			SameSite: http.SameSiteLaxMode,
+		}
+	}
+
+	http.SetCookie(c.Ctx.ResponseWriter, expiredCookie(accessTokenCookieName))
+	http.SetCookie(c.Ctx.ResponseWriter, expiredCookie(refreshTokenCookieName))
+
+	c.Data["json"] = map[string]string{"message": "logged out"}
+	c.ServeJSON()
+}
+
 func extractIntClaim(claims jwt.MapClaims, key string) (int, error) {
 	value, ok := claims[key]
 	if !ok {
