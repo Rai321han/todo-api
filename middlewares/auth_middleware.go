@@ -13,22 +13,30 @@ import (
 // If the token is missing, invalid, or expired, it responds with a 401 Unauthorized status and an appropriate error message.
 // If the token is valid, the middleware allows the request to proceed to the next handler in the chain.
 func AuthMiddleware(ctx *context.Context) {
-	authHeader := ctx.Input.Header("Authorization")
 
-	if authHeader == "" {
+	if ctx.Input.Method() == "OPTIONS" {
+		return
+	}
+
+	var tokenString string
+
+	cookie, err := ctx.Request.Cookie("accesstoken")
+	if err == nil {
+		tokenString = cookie.Value
+	}
+
+	if tokenString == "" {
+		authHeader := ctx.Input.Header("Authorization")
+		if len(authHeader) >= 7 && authHeader[:7] == "Bearer " {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if tokenString == "" {
 		ctx.Output.SetStatus(401)
 		ctx.Output.Body([]byte("Unauthorized: No token provided"))
 		return
 	}
-
-	// Expect : Bearer <token>
-	if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-		ctx.Output.SetStatus(401)
-		ctx.Output.Body([]byte("Unauthorized: Invalid token format"))
-		return
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 	secret, _ := beego.AppConfig.String("secret::JWT_SECRET")
 

@@ -2,7 +2,6 @@ package routers
 
 import (
 	"todo-api/controllers"
-	"todo-api/middlewares"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
@@ -13,10 +12,10 @@ func init() {
 			beego.NSNamespace("/auth",
 				beego.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
 				beego.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
+				beego.NSRouter("/me", &controllers.AuthController{}, "get:Me"),
 			),
 
 			beego.NSNamespace("/todos",
-				beego.NSBefore(middlewares.AuthMiddleware),
 				beego.NSRouter("/", &controllers.TodoController{}, "get:GetAll;post:Create"),
 				beego.NSRouter("/:id", &controllers.TodoController{}, "get:GetByID;put:Update;delete:Delete"),
 			),

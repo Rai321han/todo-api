@@ -11,13 +11,15 @@ import (
 
 func main() {
 	frontendURL, _ := beego.AppConfig.String("frontendurl")
-	beego.InsertFilter("*", beego.BeforeRouter, cors.Allow(&cors.Options{
+	beego.InsertFilter("/*", beego.BeforeRouter, cors.Allow(&cors.Options{
 		AllowOrigins:     []string{frontendURL},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+	beego.InsertFilter("/v1/api/todos/*", beego.BeforeRouter, middlewares.AuthMiddleware)
+	beego.InsertFilter("/v1/api/todos", beego.BeforeRouter, middlewares.AuthMiddleware)
 	beego.BConfig.RecoverPanic = false
 	beego.InsertFilterChain("*", middlewares.RecoveryFilterChain)
 	beego.InsertFilterChain("*", middlewares.RequestLogger)

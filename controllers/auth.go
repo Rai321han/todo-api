@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"todo-api/models/db"
 	userModel "todo-api/models/user"
@@ -15,6 +16,7 @@ import (
 	"todo-api/utils"
 
 	beego "github.com/beego/beego/v2/server/web"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthController struct {
@@ -28,7 +30,6 @@ const (
 
 func (c *AuthController) authService() *auth.AuthService {
 	repo := &userModel.UserRepository{DB: db.DB}
-	// get secret form app.conf
 	secret, err := beego.AppConfig.String("secret::JWT_SECRET")
 
 	if err != nil {
@@ -136,5 +137,86 @@ func (c *AuthController) Login() {
 	})
 
 	c.Data["json"] = map[string]string{"accesstoken": accessToken}
+	c.ServeJSON()
+}
+
+func extractIntClaim(claims jwt.MapClaims, key string) (int, error) {
+	value, ok := claims[key]
+	if !ok {
+		return 0, fmt.Errorf("missing %s in token", key)
+	}
+
+	switch v := value.(type) {
+	case float64:
+		return int(v), nil
+	case int:
+		return v, nil
+	default:
+		return 0, fmt.Errorf("invalid %s in token", key)
+	}
+}
+
+func extractStringClaim(claims jwt.MapClaims, key string) (string, bool) {
+	value, ok := claims[key]
+	if !ok {
+		return "", false
+	}
+
+	strValue, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+
+	return strValue, true
+}
+
+func (c *AuthController) Me() {
+	accessCookie, err := c.Ctx.Request.Cookie(accessTokenCookieName)
+	if err != nil || strings.TrimSpace(accessCookie.Value) == "" {
+		utils.RespondWithError(c.Ctx, 401, "access token cookie is required")
+		return
+	}
+
+	secret := strings.TrimSpace(c.authService().JwtSecret)
+	tokenString := strings.TrimSpace(accessCookie.Value)
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		return []byte(secret), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil || !token.Valid {
+		utils.RespondWithError(c.Ctx, 401, "invalid or expired token")
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		utils.RespondWithError(c.Ctx, 401, "invalid token claims")
+		return
+	}
+
+	expiry, err := claims.GetExpirationTime()
+	if err != nil || expiry == nil || expiry.Time.Before(time.Now()) {
+		utils.RespondWithError(c.Ctx, 401, "token is expired")
+		return
+	}
+
+	userID, err := extractIntClaim(claims, "user_id")
+	if err != nil {
+		utils.RespondWithError(c.Ctx, 401, err.Error())
+		return
+	}
+
+	username, ok := extractStringClaim(claims, "username")
+	if !ok || strings.TrimSpace(username) == "" {
+		utils.RespondWithError(c.Ctx, 401, "missing username in token")
+		return
+	}
+
+	response := map[string]any{
+		"id":       userID,
+		"username": username,
+	}
+
+	c.Data["json"] = response
 	c.ServeJSON()
 }
