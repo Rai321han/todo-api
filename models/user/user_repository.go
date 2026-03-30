@@ -6,6 +6,7 @@ import (
 
 // UserRepository provides methods to interact with the users table in the database.
 // It allows for retrieving user information and creating new users.
+
 type UserRepository struct {
 	DB *sql.DB
 }

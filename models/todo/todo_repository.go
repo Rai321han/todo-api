@@ -8,10 +8,16 @@ import (
 
 var ErrTodoNotFound = errors.New("todo not found")
 
+type DB interface {
+	QueryRow(query string, args ...any) *sql.Row
+	Query(query string, args ...any) (*sql.Rows, error)
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
 // TodoRepository provides methods to interact with the todos table in the database.
 // It contains a reference to the database connection and allows for creating, retrieving, updating, and deleting items.
 type TodoRepository struct {
-	DB *sql.DB
+	DB DB
 }
 
 // Create inserts a new item into the database.
