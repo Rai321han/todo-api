@@ -30,7 +30,10 @@ var (
 	ErrTokenGenerationFail = errors.New("failed to generate auth token")
 )
 
-const tokenTTL = 24 * time.Hour
+const (
+	accessTokenTTL  = 24 * time.Hour
+	refreshTokenTTL = 7 * 24 * time.Hour
+)
 
 // UserRepo defines repository behavior required by AuthService.
 type UserRepo interface {
@@ -121,7 +124,31 @@ func (s *AuthService) GenerateToken(user *user.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":  user.ID,
 		"username": user.Username,
-		"exp":      time.Now().Add(tokenTTL).Unix(),
+		"exp":      time.Now().Add(accessTokenTTL).Unix(),
+		"type":     "access",
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(s.JwtSecret))
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrTokenGenerationFail, err)
+	}
+
+	return tokenString, nil
+}
+
+func (s *AuthService) GenerateRefreshToken(user *user.User) (string, error) {
+	if user == nil {
+		return "", fmt.Errorf("%w: user payload is required", ErrInvalidAuthInput)
+	}
+	if strings.TrimSpace(s.JwtSecret) == "" {
+		return "", fmt.Errorf("%w: jwt secret is not configured", ErrTokenGenerationFail)
+	}
+
+	claims := jwt.MapClaims{
+		"user_id":  user.ID,
+		"username": user.Username,
+		"exp":      time.Now().Add(refreshTokenTTL).Unix(),
+		"type":     "refresh",
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.JwtSecret))
@@ -135,32 +162,37 @@ func (s *AuthService) GenerateToken(user *user.User) (string, error) {
 // Login authenticates a user by validating the email format, retrieving the user from the database,
 // checking the password hash, and generating a JWT token if the credentials are valid.
 // It returns the generated token or an error if any of the steps fail.
-func (s *AuthService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(email, password string) (string, string, error) {
 	normalizedEmail := normalizeEmail(email)
 	if !isValidEmail(normalizedEmail) {
-		return "", ErrInvalidEmailFormat
+		return "", "", ErrInvalidEmailFormat
 	}
 	if strings.TrimSpace(password) == "" {
-		return "", fmt.Errorf("%w: password is required", ErrInvalidAuthInput)
+		return "", "", fmt.Errorf("%w: password is required", ErrInvalidAuthInput)
 	}
 
 	foundUser, err := s.repo.GetUserByEmail(normalizedEmail)
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			return "", ErrInvalidCredentials
+			return "", "", ErrInvalidCredentials
 		}
 
-		return "", fmt.Errorf("%w: %v", ErrAuthLoginFailed, err)
+		return "", "", fmt.Errorf("%w: %v", ErrAuthLoginFailed, err)
 	}
 
 	if !CheckPasswordHash(password, foundUser.Password) {
-		return "", ErrInvalidCredentials
+		return "", "", ErrInvalidCredentials
 	}
 
-	token, err := s.GenerateToken(foundUser)
+	accessToken, err := s.GenerateToken(foundUser)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return token, nil
+	refreshToken, err := s.GenerateRefreshToken(foundUser)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }

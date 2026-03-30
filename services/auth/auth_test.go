@@ -171,11 +171,12 @@ func TestAuthServiceLogin(t *testing.T) {
 	Convey("Login should reject invalid email", t, func() {
 		svc := NewAuthService(&fakeUserRepo{}, jwtSecret)
 
-		token, err := svc.Login(fakeBadEmail, plainTextPassword)
+		accessToken, refreshToken, err := svc.Login(fakeBadEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidEmailFormat), ShouldBeTrue)
-		So(token, ShouldEqual, "")
+		So(accessToken, ShouldEqual, "")
+		So(refreshToken, ShouldEqual, "")
 	})
 
 	Convey("Login should propagate repo error", t, func() {
@@ -186,7 +187,7 @@ func TestAuthServiceLogin(t *testing.T) {
 		}
 		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login(fakeValidEmail, plainTextPassword)
+		_, _, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrAuthLoginFailed), ShouldBeTrue)
@@ -203,7 +204,7 @@ func TestAuthServiceLogin(t *testing.T) {
 		}
 		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login(fakeValidEmail, wrongPassword)
+		_, _, err := svc.Login(fakeValidEmail, wrongPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
@@ -217,13 +218,13 @@ func TestAuthServiceLogin(t *testing.T) {
 		}
 		svc := NewAuthService(repo, jwtSecret)
 
-		_, err := svc.Login(fakeValidEmail, plainTextPassword)
+		_, _, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldNotBeNil)
 		So(errors.Is(err, ErrInvalidCredentials), ShouldBeTrue)
 	})
 
-	Convey("Login should return token for valid credentials", t, func() {
+	Convey("Login should return access and refresh tokens for valid credentials", t, func() {
 		hash, hashErr := HashPassword(plainTextPassword)
 		So(hashErr, ShouldBeNil)
 
@@ -234,15 +235,28 @@ func TestAuthServiceLogin(t *testing.T) {
 		}
 		svc := NewAuthService(repo, jwtSecret)
 
-		token, err := svc.Login(fakeValidEmail, plainTextPassword)
+		accessToken, refreshToken, err := svc.Login(fakeValidEmail, plainTextPassword)
 
 		So(err, ShouldBeNil)
-		So(token, ShouldNotBeBlank)
+		So(accessToken, ShouldNotBeBlank)
+		So(refreshToken, ShouldNotBeBlank)
 
-		parsed, parseErr := jwt.Parse(token, func(token *jwt.Token) (any, error) {
+		parsedAccess, parseAccessErr := jwt.Parse(accessToken, func(token *jwt.Token) (any, error) {
 			return []byte(jwtSecret), nil
 		})
-		So(parseErr, ShouldBeNil)
-		So(parsed.Valid, ShouldBeTrue)
+		So(parseAccessErr, ShouldBeNil)
+		So(parsedAccess.Valid, ShouldBeTrue)
+
+		accessClaims := parsedAccess.Claims.(jwt.MapClaims)
+		So(accessClaims["type"].(string), ShouldEqual, "access")
+
+		parsedRefresh, parseRefreshErr := jwt.Parse(refreshToken, func(token *jwt.Token) (any, error) {
+			return []byte(jwtSecret), nil
+		})
+		So(parseRefreshErr, ShouldBeNil)
+		So(parsedRefresh.Valid, ShouldBeTrue)
+
+		refreshClaims := parsedRefresh.Claims.(jwt.MapClaims)
+		So(refreshClaims["type"].(string), ShouldEqual, "refresh")
 	})
 }

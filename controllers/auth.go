@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"strings"
 
 	"todo-api/models/db"
 	userModel "todo-api/models/user"
@@ -18,6 +20,11 @@ import (
 type AuthController struct {
 	beego.Controller
 }
+
+const (
+	accessTokenCookieName  = "accesstoken"
+	refreshTokenCookieName = "refreshtoken"
+)
 
 func (c *AuthController) authService() *auth.AuthService {
 	repo := &userModel.UserRepository{DB: db.DB}
@@ -100,12 +107,34 @@ func (c *AuthController) Login() {
 	}
 	authService := c.authService()
 
-	token, err := authService.Login(input.Email, input.Password)
+	accessToken, refreshToken, err := authService.Login(input.Email, input.Password)
 	if err != nil {
 		c.handleAuthError("login", err)
 		return
 	}
 
-	c.Data["json"] = map[string]string{"token": token}
+	isSecureCookie := strings.ToLower(strings.TrimSpace(beego.BConfig.RunMode)) == "prod"
+
+	http.SetCookie(c.Ctx.ResponseWriter, &http.Cookie{
+		Name:     accessTokenCookieName,
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   24 * 60 * 60,
+		HttpOnly: true,
+		Secure:   isSecureCookie,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(c.Ctx.ResponseWriter, &http.Cookie{
+		Name:     refreshTokenCookieName,
+		Value:    refreshToken,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60,
+		HttpOnly: true,
+		Secure:   isSecureCookie,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	c.Data["json"] = map[string]string{"accesstoken": accessToken}
 	c.ServeJSON()
 }
