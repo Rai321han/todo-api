@@ -107,7 +107,7 @@ cd todo-api
 mv conf/app-sample.conf conf/app.conf
 ```
 
-Then update `conf/app.conf` with your database and JWT secret values
+Then update `conf/app.conf` with your database and JWT secret values, and frontend url.
 
 3. Update compose file
 
