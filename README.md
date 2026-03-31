@@ -104,12 +104,13 @@ cd todo-api
 2. Configure application settings.
 
 ```bash
-mv conf/app.sample.conf conf/app.conf
+mv conf/app-sample.conf conf/app.conf
 ```
 
 Then update `conf/app.conf` with your database and JWT secret values
 
 3. Update compose file
+
 ```bash
 mv docker-compose-sample.yml docker-compose.yml
 ```
@@ -123,7 +124,6 @@ docker compose up --build
 ```
 
 This also runs schema initialization from `init-db/init.sql`.
-
 
 If successful, the api service will be available at:
 
